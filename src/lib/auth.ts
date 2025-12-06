@@ -5,6 +5,13 @@ import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
+type ExtendedToken = {
+  id?: string
+  role?: string
+  firmId?: string | null
+  sub?: string
+}
+
 const credentialsSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
@@ -72,25 +79,37 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
-    async jwt({ token, user }: any) {
+    async jwt({ token, user }) {
+      const tokenWithClaims = token as ExtendedToken
+
       // Add custom claims to JWT token
       if (user) {
         return {
           ...token,
+          id: user.id ?? token.sub,
+          sub: user.id ?? token.sub,
           role: user.role,
           firmId: user.firmId,
         }
       }
-      return token
+
+      return {
+        ...token,
+        id: tokenWithClaims.id ?? token.sub,
+      }
     },
-    async session({ session, token }: any) {
+    async session({ session, token }) {
+      const tokenWithClaims = token as ExtendedToken
+      const userId = tokenWithClaims.id ?? tokenWithClaims.sub ?? ''
+
       // Add custom data to session
       return {
         ...session,
         user: {
           ...session.user,
-          role: token.role,
-          firmId: token.firmId,
+          id: userId,
+          role: tokenWithClaims.role,
+          firmId: tokenWithClaims.firmId,
         },
       }
     },
