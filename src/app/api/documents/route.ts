@@ -146,12 +146,33 @@ export async function GET(request: NextRequest) {
 
     const total = await db.document.count({ where })
 
+    const decryptSnapshotContent = (snapshot: (typeof documents)[number]['snapshots'][number]) => {
+      try {
+        return {
+          content: decryptContent(snapshot.content),
+          isEncrypted: true,
+        }
+      } catch (error) {
+        console.warn('Snapshot decryption failed; returning raw content', {
+          snapshotId: snapshot.id,
+          documentId: snapshot.documentId,
+          metric: 'documents_snapshot_decryption_failed',
+          error,
+        })
+
+        return {
+          content: snapshot.content,
+          isEncrypted: false,
+        }
+      }
+    }
+
     const safeDocuments = documents.map((document) => {
       const [latestSnapshot] = document.snapshots
       const decryptedSnapshot = latestSnapshot
         ? {
             ...latestSnapshot,
-            content: decryptContent(latestSnapshot.content),
+            ...decryptSnapshotContent(latestSnapshot),
           }
         : null
 
