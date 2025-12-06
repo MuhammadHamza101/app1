@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PatentFlow Enterprise Launcher</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 90%;
+            max-width: 800px;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-radius: 20px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .status-section {
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            background: #f8f9fa;
+            border-left: 4px solid #ddd;
+        }
+
+        .status-item.success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+
+        .status-item.error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+
+        .status-item.warning {
+            border-left-color: #ffc107;
+            background: #fff3cd;
+        }
+
+        .status-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 15px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        }
+
+        .status-icon.success {
+            background: #28a745;
+        }
+
+        .status-icon.error {
+            background: #dc3545;
+        }
+
+        .status-icon.warning {
+            background: #ffc107;
+        }
+
+        .status-text {
+            flex: 1;
+        }
+
+        .status-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .status-description {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .button.secondary {
+            background: #6c757d;
+        }
+
+        .console-output {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .console-output.show {
+            display: block;
+        }
+
+        .login-info {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .login-info.show {
+            display: block;
+        }
+
+        .login-info h3 {
+            color: #0066cc;
+            margin-bottom: 10px;
+        }
+
+        .login-credentials {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+
+        .steps {
+            text-align: left;
+            margin: 20px 0;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+            opacity: 0.5;
+            transition: opacity 0.3s;
+        }
+
+        .step.active {
+            opacity: 1;
+        }
+
+        .step.completed {
+            opacity: 1;
+        }
+
+        .step-number {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #ddd;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+
+        .step.active .step-number {
+            background: #667eea;
+        }
+
+        .step.completed .step-number {
+            background: #28a745;
+        }
+
+        .step-text {
+            flex: 1;
+        }
+
+        .step-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .step-description {
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">PF</div>
+        <h1>PatentFlow Enterprise</h1>
+        <p class="subtitle">Professional Patent Drafting & Analysis Platform</p>
+
+        <div class="steps">
+            <div class="step" id="step1">
+                <div class="step-number">1</div>
+                <div class="step-text">
+                    <div class="step-title">Checking Prerequisites</div>
+                    <div class="step-description">Verifying Node.js and Python installation</div>
+                </div>
+            </div>
+            <div class="step" id="step2">
+                <div class="step-number">2</div>
+                <div class="step-text">
+                    <div class="step-title">Installing Dependencies</div>
+                    <div class="step-description">Setting up required packages and libraries</div>
+                </div>
+            </div>
+            <div class="step" id="step3">
+                <div class="step-number">3</div>
+                <div class="step-text">
+                    <div class="step-title">Setting Up Database</div>
+                    <div class="step-description">Initializing the patent database</div>
+                </div>
+            </div>
+            <div class="step" id="step4">
+                <div class="step-number">4</div>
+                <div class="step-text">
+                    <div class="step-title">Starting Services</div>
+                    <div class="step-description">Launching web application and collaboration service</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressBar"></div>
+        </div>
+
+        <div class="status-section" id="statusSection">
+            <!-- Status items will be added dynamically -->
+        </div>
+
+        <div class="console-output" id="consoleOutput"></div>
+
+        <div class="login-info" id="loginInfo">
+            <h3>🎉 PatentFlow Enterprise is Ready!</h3>
+            <p>Your professional patent platform is now running. Use these credentials to login:</p>
+            <div class="login-credentials">
+                <strong>Email:</strong> admin@patentflow.com<br>
+                <strong>Password:</strong> admin123
+            </div>
+            <button class="button" onclick="openBrowser()">Open PatentFlow Enterprise</button>
+        </div>
+
+        <div>
+            <button class="button" id="startButton" onclick="startApplication()">Start Application</button>
+            <button class="button secondary" onclick="toggleConsole()">Show Console</button>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        
+        let currentStep = 0;
+        let consoleVisible = false;
+
+        function updateProgress(percent) {
+            document.getElementById('progressBar').style.width = percent + '%';
+        }
+
+        function setStepActive(stepNumber) {
+            // Reset all steps
+            for (let i = 1; i <= 4; i++) {
+                const step = document.getElementById(`step${i}`);
+                step.classList.remove('active', 'completed');
+            }
+            
+            // Set completed steps
+            for (let i = 1; i < stepNumber; i++) {
+                document.getElementById(`step${i}`).classList.add('completed');
+            }
+            
+            // Set active step
+            if (stepNumber <= 4) {
+                document.getElementById(`step${stepNumber}`).classList.add('active');
+            }
+        }
+
+        function addStatus(title, description, type = 'success') {
+            const statusSection = document.getElementById('statusSection');
+            const statusItem = document.createElement('div');
+            statusItem.className = `status-item ${type}`;
+            
+            const icon = document.createElement('div');
+            icon.className = `status-icon ${type}`;
+            icon.textContent = type === 'success' ? '✓' : type === 'error' ? '✗' : '!';
+            
+            const text = document.createElement('div');
+            text.className = 'status-text';
+            text.innerHTML = `<div class="status-title">${title}</div><div class="status-description">${description}</div>`;
+            
+            statusItem.appendChild(icon);
+            statusItem.appendChild(text);
+            statusSection.appendChild(statusItem);
+        }
+
+        function appendToConsole(text) {
+            const consoleOutput = document.getElementById('consoleOutput');
+            consoleOutput.textContent += text;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        function toggleConsole() {
+            const consoleOutput = document.getElementById('consoleOutput');
+            consoleVisible = !consoleVisible;
+            consoleOutput.classList.toggle('show', consoleVisible);
+            event.target.textContent = consoleVisible ? 'Hide Console' : 'Show Console';
+        }
+
+        function openBrowser() {
+            ipcRenderer.invoke('open-browser');
+        }
+
+        async function startApplication() {
+            const startButton = document.getElementById('startButton');
+            startButton.disabled = true;
+            startButton.textContent = 'Starting...';
+
+            try {
+                // Step 1: Check prerequisites
+                setStepActive(1);
+                updateProgress(10);
+                addStatus('Checking Prerequisites', 'Verifying system requirements...', 'warning');
+                
+                const prereqs = await ipcRenderer.invoke('check-prerequisites');
+                
+                if (!prereqs.nodeJs.installed) {
+                    addStatus('Node.js Not Found', 'Node.js is required but not installed', 'error');
+                    const result = await ipcRenderer.invoke('show-message-box', {
+                        type: 'error',
+                        title: 'Node.js Required',
+                        message: 'Node.js is not installed. Would you like to download it?',
+                        buttons: ['Download Node.js', 'Cancel']
+                    });
+                    
+                    if (result.response === 0) {
+                        require('electron').shell.openExternal('https://nodejs.org/en/download/');
+                    }
+                    startButton.disabled = false;
+                    startButton.textContent = 'Start Application';
+                    return;
+                }
+                
+                addStatus('Node.js Found', `Version ${prereqs.nodeJs.version}`, 'success');
+                
+                if (!prereqs.python.installed) {
+                    addStatus('Python Not Found', 'Python is recommended but not required', 'warning');
+                } else {
+                    addStatus('Python Found', `Version ${prereqs.python.version}`, 'success');
+                }
+
+                // Step 2: Install dependencies
+                setStepActive(2);
+                updateProgress(30);
+                addStatus('Installing Dependencies', 'This may take a few minutes...', 'warning');
+                
+                const installResult = await ipcRenderer.invoke('install-dependencies');
+                if (!installResult.success) {
+                    addStatus('Installation Failed', installResult.error, 'error');
+                    startButton.disabled = false;
+                    startButton.textContent = 'Start Application';
+                    return;
+                }
+                
+                addStatus('Dependencies Installed', 'All required packages are ready', 'success');
+
+                // Step 3: Setup database
+                setStepActive(3);
+                updateProgress(60);
+                addStatus('Setting Up Database', 'Initializing patent database...', 'warning');
+                
+                const dbResult = await ipcRenderer.invoke('setup-database');
+                if (!dbResult.success) {
+                    addStatus('Database Setup Failed', dbResult.error, 'error');
+                    startButton.disabled = false;
+                    startButton.textContent = 'Start Application';
+                    return;
+                }
+                
+                addStatus('Database Ready', 'Patent database initialized', 'success');
+
+                // Step 4: Start services
+                setStepActive(4);
+                updateProgress(80);
+                addStatus('Starting Services', 'Launching web application...', 'warning');
+                
+                const servicesResult = await ipcRenderer.invoke('start-services');
+                if (!servicesResult.success) {
+                    addStatus('Services Failed', servicesResult.error, 'error');
+                    startButton.disabled = false;
+                    startButton.textContent = 'Start Application';
+                    return;
+                }
+                
+                updateProgress(100);
+                addStatus('Services Started', 'PatentFlow Enterprise is running!', 'success');
+                
+                // Show login info
+                document.getElementById('loginInfo').classList.add('show');
+                startButton.textContent = 'Application Running';
+                
+                // Auto-open browser
+                setTimeout(() => {
+                    openBrowser();
+                }, 2000);
+                
+            } catch (error) {
+                addStatus('Startup Failed', error.message, 'error');
+                startButton.disabled = false;
+                startButton.textContent = 'Start Application';
+            }
+        }
+
+        // Listen for console output
+        ipcRenderer.on('install-output', (event, data) => {
+            appendToConsole(data);
+        });
+
+        ipcRenderer.on('db-output', (event, data) => {
+            appendToConsole(data);
+        });
+
+        ipcRenderer.on('collab-output', (event, data) => {
+            appendToConsole(data);
+        });
+
+        ipcRenderer.on('web-output', (event, data) => {
+            appendToConsole(data);
+        });
+
+        // Initialize
+        updateProgress(0);
+        addStatus('Ready to Start', 'Click "Start Application" to begin', 'success');
+    </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "patentflow-collaboration-service",
+  "version": "1.0.0",
+  "description": "PatentFlow Enterprise Real-time Collaboration Service",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node index.js",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "socket.io": "^4.7.2",
+    "cors": "^2.8.5"
+  },
+  "keywords": ["patentflow", "collaboration", "websocket"],
+  "author": "PatentFlow Team",
+  "license": "MIT"
+}

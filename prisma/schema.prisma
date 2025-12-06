@@ -1,0 +1,346 @@
+// PatentFlow Enterprise Database Schema
+// Core data models for patent document analysis and collaboration
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User management and authentication
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String?
+  password    String?  // For credentials provider
+  role        UserRole @default(PARALEGAL)
+  firmId      String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  firm        Firm?    @relation(fields: [firmId], references: [id])
+  documents   Document[]
+  analyses    Analysis[]
+  comments    Comment[]
+  sessions    Session[]
+  
+  @@map("users")
+}
+
+model Firm {
+  id          String   @id @default(cuid())
+  name        String
+  domain      String?  @unique
+  settings    Json?    // Firm-specific settings
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  users       User[]
+  documents   Document[]
+  
+  @@map("firms")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  token        String   @unique
+  refreshToken String?  @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  
+  // Relations
+  user         User     @relation(fields: [userId], references: [id])
+  
+  @@map("sessions")
+}
+
+// Document management
+model Document {
+  id            String         @id @default(cuid())
+  title         String
+  originalPath  String?        // Original file path
+  checksum      String?        // File integrity checksum
+  version       Int            @default(1)
+  status        DocumentStatus @default(DRAFT)
+  metadata      Json?          // Document metadata
+  encryptedData String?        // Encrypted document content
+  firmId        String?
+  createdBy     String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  // Relations
+  firm          Firm?          @relation(fields: [firmId], references: [id])
+  creator       User           @relation(fields: [createdBy], references: [id])
+  snapshots     DocumentSnapshot[]
+  analyses      Analysis[]
+  comments      Comment[]
+  reports       Report[]
+  
+  @@map("documents")
+}
+
+model DocumentSnapshot {
+  id              String   @id @default(cuid())
+  documentId      String
+  version         Int
+  content         String   // Raw text content
+  structuredData  Json     // Parsed sections, claims, figures
+  mappingMetadata Json     // Position mapping for Word navigation
+  checksum        String
+  createdAt       DateTime @default(now())
+  
+  // Relations
+  document        Document @relation(fields: [documentId], references: [id])
+  analyses        Analysis[]
+  findings        Finding[]
+  anchors         Anchor[]
+  
+  @@unique([documentId, version])
+  @@map("document_snapshots")
+}
+
+// Analysis results and findings
+model Analysis {
+  id            String         @id @default(cuid())
+  documentId    String
+  snapshotId    String
+  userId        String
+  type          AnalysisType
+  status        AnalysisStatus @default(RUNNING)
+  config        Json?          // Analysis configuration
+  results       Json?          // Analysis results
+  metrics       Json?          // Performance metrics
+  startedAt     DateTime       @default(now())
+  completedAt   DateTime?
+  
+  // Relations
+  document      Document @relation(fields: [documentId], references: [id])
+  snapshot      DocumentSnapshot @relation(fields: [snapshotId], references: [id])
+  user          User     @relation(fields: [userId], references: [id])
+  findings      Finding[]
+  reports       Report[]
+  
+  @@map("analyses")
+}
+
+model Finding {
+  id            String       @id @default(cuid())
+  analysisId    String
+  snapshotId    String
+  ruleId        String?
+  type          FindingType
+  severity      Severity
+  title         String
+  description   String
+  suggestion    String?
+  context       String        // Surrounding text
+  anchorId      String?       // Link to text position
+  metadata      Json?         // Additional finding data
+  confidence    Float?        // Confidence score 0-1
+  status        FindingStatus @default(OPEN)
+  createdAt     DateTime     @default(now())
+  
+  // Relations
+  analysis      Analysis       @relation(fields: [analysisId], references: [id])
+  snapshot      DocumentSnapshot @relation(fields: [snapshotId], references: [id])
+  anchor        Anchor?        @relation(fields: [anchorId], references: [id])
+  rule          Rule?          @relation(fields: [ruleId], references: [id])
+  
+  @@map("findings")
+}
+
+model Anchor {
+  id            String   @id @default(cuid())
+  snapshotId    String
+  paragraphIndex Int
+  startOffset   Int
+  endOffset     Int
+  text          String
+  contextHash   String?  // For change detection
+  metadata      Json?    // Position-specific data
+  createdAt     DateTime @default(now())
+  
+  // Relations
+  snapshot      DocumentSnapshot @relation(fields: [snapshotId], references: [id])
+  findings      Finding[]
+  
+  @@map("anchors")
+}
+
+// Rule engine
+model Rule {
+  id            String     @id @default(cuid())
+  name          String     @unique
+  description   String
+  category      RuleCategory
+  type          RuleType
+  config        Json       // Rule configuration
+  enabled       Boolean    @default(true)
+  version       String     @default("1.0")
+  createdBy     String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  // Relations
+  findings      Finding[]
+  
+  @@map("rules")
+}
+
+// Reporting and collaboration
+model Report {
+  id            String       @id @default(cuid())
+  documentId    String
+  analysisId    String?
+  userId        String
+  type          ReportType
+  title         String
+  content       String?      // Report content (HTML/PDF)
+  data          Json         // Report data and metadata
+  format        ReportFormat @default(HTML)
+  status        ReportStatus @default(DRAFT)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  
+  // Relations
+  document      Document @relation(fields: [documentId], references: [id])
+  analysis      Analysis? @relation(fields: [analysisId], references: [id])
+  
+  @@map("reports")
+}
+
+model Comment {
+  id            String       @id @default(cuid())
+  documentId    String
+  userId        String
+  anchorId      String?
+  content       String
+  type          CommentType  @default(GENERAL)
+  status        CommentStatus @default(OPEN)
+  metadata      Json?        // Comment metadata
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  
+  // Relations
+  document      Document @relation(fields: [documentId], references: [id])
+  user          User     @relation(fields: [userId], references: [id])
+  
+  @@map("comments")
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  ATTORNEY
+  PARALEGAL
+  REVIEWER
+}
+
+enum DocumentStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  FILED
+  ARCHIVED
+}
+
+enum AnalysisType {
+  CLAIMS_ANALYSIS
+  SPECIFICATION_ANALYSIS
+  FIGURE_ANALYSIS
+  TERMINOLOGY_ANALYSIS
+  FULL_ANALYSIS
+}
+
+enum AnalysisStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum FindingType {
+  ANTECEDENT_BASIS
+  CLAIM_DEPENDENCY
+  TERMINOLOGY_INCONSISTENCY
+  REFERENCE_NUMERAL
+  FORMATTING_ERROR
+  MISSING_ELEMENT
+  RED_FLAG_TERM
+}
+
+enum Severity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+}
+
+enum FindingStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  IGNORED
+}
+
+enum RuleCategory {
+  CLAIMS
+  SPECIFICATION
+  FIGURES
+  TERMINOLOGY
+  FORMATTING
+  LEGAL
+}
+
+enum RuleType {
+  PATTERN_MATCH
+  NLP_BASED
+  DEPENDENCY_CHECK
+  CONSISTENCY_CHECK
+  VALIDATION_RULE
+}
+
+enum ReportType {
+  ANALYSIS_SUMMARY
+  DETAILED_FINDINGS
+  CLAIM_GRAPH
+  TERMINOLOGY_REPORT
+  COMPLIANCE_REPORT
+}
+
+enum ReportFormat {
+  HTML
+  PDF
+  WORD
+  JSON
+}
+
+enum ReportStatus {
+  DRAFT
+  GENERATING
+  COMPLETED
+  FAILED
+}
+
+enum CommentType {
+  GENERAL
+  FINDING
+  SUGGESTION
+  QUESTION
+  APPROVAL
+}
+
+enum CommentStatus {
+  OPEN
+  RESOLVED
+  CLOSED
+}

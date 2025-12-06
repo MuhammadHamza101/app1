@@ -1,0 +1,49 @@
+{
+  "name": "patentflow-enterprise-launcher",
+  "version": "1.0.0",
+  "description": "PatentFlow Enterprise Desktop Launcher",
+  "main": "launcher/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "dist": "electron-builder --publish=never"
+  },
+  "keywords": ["patent", "enterprise", "launcher"],
+  "author": "PatentFlow Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.patentflow.enterprise",
+    "productName": "PatentFlow Enterprise",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "launcher/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png",
+      "category": "Office"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}
