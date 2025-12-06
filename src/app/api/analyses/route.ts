@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { z } from 'zod'
-import { decryptContent } from '@/lib/encryption'
+import { enqueueAnalysisJob } from '@/lib/analysis/pipeline'
 
 const analysisSchema = z.object({
   documentId: z.string(),
@@ -61,47 +61,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create analysis record
     const analysis = await db.analysis.create({
       data: {
         documentId,
         snapshotId: snapshot.id,
         userId: session.user.id,
         type,
-        status: 'RUNNING',
+        status: 'PENDING',
         config: config || {},
         startedAt: new Date(),
       },
     })
 
-    const decryptedContent = decryptContent(snapshot.content)
-    const mockFindings = generateMockFindings(type, decryptedContent)
-    const mockResults = {
-      findings: mockFindings,
-      summary: generateMockSummary(mockFindings),
-      metrics: {
-        processingTime: 1.5,
-        totalFindings: mockFindings.length,
-        accuracy: 0.95,
-      },
-    }
-
-    const updatedAnalysis = await db.analysis.update({
-      where: { id: analysis.id },
-      data: {
-        status: 'COMPLETED',
-        results: mockResults,
-        completedAt: new Date(),
-      },
+    enqueueAnalysisJob({
+      analysisId: analysis.id,
+      snapshotId: snapshot.id,
+      type,
+      config,
     })
 
-    console.log(`Analysis completed: ${analysis.id} for document ${documentId}`)
-
     return NextResponse.json({
-      message: 'Analysis completed successfully',
-      analysisId: updatedAnalysis.id,
-      status: updatedAnalysis.status,
-      results: mockResults,
+      message: 'Analysis job enqueued successfully',
+      analysisId: analysis.id,
+      status: analysis.status,
     })
   } catch (error) {
     console.error('Analysis creation error:', error)
@@ -126,8 +108,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const documentId = searchParams.get('documentId')
     const status = searchParams.get('status')
+    const analysisId = searchParams.get('analysisId') ?? searchParams.get('id')
 
     const where: any = {}
+    if (analysisId) {
+      where.id = analysisId
+    }
     if (documentId) {
       where.documentId = documentId
     }
@@ -154,99 +140,12 @@ export async function GET(request: NextRequest) {
       orderBy: { startedAt: 'desc' },
     })
 
-    return NextResponse.json({
-      analyses,
-    })
+    return NextResponse.json({ analyses })
   } catch (error) {
     console.error('Analysis retrieval error:', error)
     return NextResponse.json(
       { error: 'Failed to retrieve analyses' },
       { status: 500 }
     )
-  }
-}
-
-function generateMockFindings(type: string, content: string) {
-  const findings = []
-  
-  // Generate different findings based on analysis type
-  if (type === 'CLAIMS_ANALYSIS' || type === 'FULL_ANALYSIS') {
-    // Mock claim findings
-    findings.push({
-      id: '1',
-      type: 'ANTECEDENT_BASIS',
-      severity: 'HIGH',
-      title: 'Missing Antecedent Basis',
-      description: 'Term "the rotary shaft" in claim 3 lacks proper antecedent basis',
-      suggestion: 'Add "a rotary shaft" in claim 1 or modify claim 3',
-      context: '3. The system of claim 1, wherein the rotary shaft...',
-      confidence: 0.95,
-      createdAt: new Date(),
-    })
-    
-    findings.push({
-      id: '2',
-      type: 'CLAIM_DEPENDENCY',
-      severity: 'MEDIUM',
-      title: 'Invalid Claim Dependency',
-      description: 'Claim 8 depends on non-existent claim 15',
-      suggestion: 'Update dependency to correct claim number',
-      context: '8. The method of claim 15, further comprising...',
-      confidence: 0.98,
-      createdAt: new Date(),
-    })
-  }
-  
-  if (type === 'TERMINOLOGY_ANALYSIS' || type === 'FULL_ANALYSIS') {
-    // Mock terminology findings
-    findings.push({
-      id: '3',
-      type: 'TERMINOLOGY_INCONSISTENCY',
-      severity: 'MEDIUM',
-      title: 'Inconsistent Terminology',
-      description: 'Term "rotary shaft" appears with different capitalization',
-      suggestion: 'Standardize to "rotary shaft" throughout document',
-      context: 'Found "rotary shaft" and "Rotary Shaft"',
-      confidence: 0.92,
-      createdAt: new Date(),
-    })
-  }
-  
-  if (type === 'FIGURE_ANALYSIS' || type === 'FULL_ANALYSIS') {
-    // Mock figure findings
-    findings.push({
-      id: '4',
-      type: 'REFERENCE_NUMERAL',
-      severity: 'LOW',
-      title: 'Missing Figure Reference',
-      description: 'Reference numeral 10 is mentioned but figure 10 not found',
-      suggestion: 'Add figure 10 or update reference',
-      context: 'Reference to figure 10 in detailed description',
-      confidence: 0.88,
-      createdAt: new Date(),
-    })
-  }
-  
-  return findings
-}
-
-function generateMockSummary(findings: any[]) {
-  const severityCounts = findings.reduce((acc, finding) => {
-    acc[finding.severity] = (acc[finding.severity] || 0) + 1
-    return acc
-  }, {} as any)
-  
-  return {
-    totalIssues: findings.length,
-    criticalIssues: severityCounts.CRITICAL || 0,
-    highIssues: severityCounts.HIGH || 0,
-    mediumIssues: severityCounts.MEDIUM || 0,
-    lowIssues: severityCounts.LOW || 0,
-    score: Math.max(0, 100 - (findings.length * 5)), // Simple scoring
-    recommendations: [
-      'Review antecedent basis in claims',
-      'Standardize terminology throughout document',
-      'Validate all figure references',
-    ],
   }
 }

@@ -114,7 +114,7 @@ model Analysis {
   snapshotId    String
   userId        String
   type          AnalysisType
-  status        AnalysisStatus @default(RUNNING)
+  status        AnalysisStatus @default(PENDING)
   config        Json?          // Analysis configuration
   results       Json?          // Analysis results
   metrics       Json?          // Performance metrics
@@ -261,6 +261,7 @@ enum AnalysisType {
 }
 
 enum AnalysisStatus {
+  PENDING
   RUNNING
   COMPLETED
   FAILED
