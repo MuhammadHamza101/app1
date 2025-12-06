@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { auth } from '@/lib/auth'
+import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { z } from 'zod'
 import crypto from 'crypto'
+import { decryptContent, encryptContent } from '@/lib/encryption'
 
 const documentSchema = z.object({
   title: z.string().min(1),
@@ -11,43 +12,9 @@ const documentSchema = z.object({
   metadata: z.object({}).optional(),
 })
 
-// Encryption key (in production, use environment variable)
-const ENCRYPTION_KEY = process.env.PATENTFLOW_ENCRYPTION_KEY || 'fallback-key-for-development'
-
-function encrypt(text: string): string {
-  const algorithm = 'aes-256-cbc'
-  const key = crypto.scryptSync(ENCRYPTION_KEY, 'salt', 32)
-  const iv = crypto.randomBytes(16)
-  const cipher = crypto.createCipher(algorithm, key, iv)
-  
-  let encrypted = cipher.update(text, 'utf8', 'hex')
-  encrypted += cipher.final('hex')
-  
-  return iv.toString('hex') + ':' + encrypted
-}
-
-function decrypt(encryptedData: string): string {
-  try {
-    const algorithm = 'aes-256-cbc'
-    const key = crypto.scryptSync(ENCRYPTION_KEY, 'salt', 32)
-    const parts = encryptedData.split(':')
-    const iv = Buffer.from(parts[0], 'hex')
-    const encrypted = Buffer.from(parts[1], 'hex')
-    const decipher = crypto.createDecipher(algorithm, key, iv)
-    
-    let decrypted = decipher.update(encrypted, null, 'utf8')
-    decrypted += decipher.final('utf8')
-    
-    return decrypted
-  } catch (error) {
-    console.error('Decryption failed:', error)
-    throw new Error('Failed to decrypt document')
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(auth)
+    const session = await getServerSession(authOptions)
     
     if (!session) {
       return NextResponse.json(
@@ -60,7 +27,8 @@ export async function POST(request: NextRequest) {
     const { title, content, metadata } = documentSchema.parse(body)
 
     // Encrypt document content
-    const encryptedContent = encrypt(content)
+    const encryptedContent = encryptContent(content)
+    const encryptedSnapshot = encryptContent(content)
     const checksum = crypto.createHash('sha256').update(content).digest('hex')
 
     // Create document record
@@ -81,7 +49,7 @@ export async function POST(request: NextRequest) {
       data: {
         documentId: document.id,
         version: 1,
-        content, // Store unencrypted for analysis
+        content: encryptedSnapshot,
         structuredData: {
           sections: [],
           claims: [],
@@ -126,7 +94,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(auth)
+    const session = await getServerSession(authOptions)
     
     if (!session) {
       return NextResponse.json(
@@ -178,8 +146,36 @@ export async function GET(request: NextRequest) {
 
     const total = await db.document.count({ where })
 
+    const safeDocuments = documents.map((document) => {
+      const [latestSnapshot] = document.snapshots
+      const decryptedSnapshot = latestSnapshot
+        ? {
+            ...latestSnapshot,
+            content: decryptContent(latestSnapshot.content),
+          }
+        : null
+
+      return {
+        id: document.id,
+        title: document.title,
+        originalPath: document.originalPath,
+        checksum: document.checksum,
+        version: document.version,
+        status: document.status,
+        metadata: document.metadata,
+        firmId: document.firmId,
+        createdBy: document.createdBy,
+        createdAt: document.createdAt,
+        updatedAt: document.updatedAt,
+        creator: document.creator,
+        analyses: document.analyses,
+        snapshots: decryptedSnapshot ? [decryptedSnapshot] : [],
+        _count: document._count,
+      }
+    })
+
     return NextResponse.json({
-      documents,
+      documents: safeDocuments,
       pagination: {
         page,
         limit,
