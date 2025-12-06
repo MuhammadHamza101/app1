@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { auth } from '@/lib/auth'
+import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { z } from 'zod'
-import crypto from 'crypto'
+import { decryptContent } from '@/lib/encryption'
 
 const analysisSchema = z.object({
   documentId: z.string(),
@@ -13,7 +13,7 @@ const analysisSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(auth)
+    const session = await getServerSession(authOptions)
     
     if (!session) {
       return NextResponse.json(
@@ -74,45 +74,34 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Mock analysis completion (in production, this would call the actual analysis engine)
-    setTimeout(async () => {
-      try {
-        // Simulate analysis results
-        const mockFindings = generateMockFindings(type, snapshot.content)
-        const mockResults = {
-          findings: mockFindings,
-          summary: generateMockSummary(mockFindings),
-          metrics: {
-            processingTime: Math.random() * 3 + 1, // 1-4 seconds
-            totalFindings: mockFindings.length,
-            accuracy: 0.92 + Math.random() * 0.08, // 92-100%
-          },
-        }
+    const decryptedContent = decryptContent(snapshot.content)
+    const mockFindings = generateMockFindings(type, decryptedContent)
+    const mockResults = {
+      findings: mockFindings,
+      summary: generateMockSummary(mockFindings),
+      metrics: {
+        processingTime: 1.5,
+        totalFindings: mockFindings.length,
+        accuracy: 0.95,
+      },
+    }
 
-        // Update analysis record
-        await db.analysis.update({
-          where: { id: analysis.id },
-          data: {
-            status: 'COMPLETED',
-            results: mockResults,
-            completedAt: new Date(),
-          },
-        })
+    const updatedAnalysis = await db.analysis.update({
+      where: { id: analysis.id },
+      data: {
+        status: 'COMPLETED',
+        results: mockResults,
+        completedAt: new Date(),
+      },
+    })
 
-        console.log(`Analysis completed: ${analysis.id} for document ${documentId}`)
-      } catch (error) {
-        console.error('Analysis completion error:', error)
-        await db.analysis.update({
-          where: { id: analysis.id },
-          data: { status: 'FAILED' },
-        })
-      }
-    }, 2000 + Math.random() * 2000) // 2-6 seconds
+    console.log(`Analysis completed: ${analysis.id} for document ${documentId}`)
 
     return NextResponse.json({
-      message: 'Analysis started successfully',
-      analysisId: analysis.id,
-      status: 'RUNNING',
+      message: 'Analysis completed successfully',
+      analysisId: updatedAnalysis.id,
+      status: updatedAnalysis.status,
+      results: mockResults,
     })
   } catch (error) {
     console.error('Analysis creation error:', error)
@@ -125,7 +114,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(auth)
+    const session = await getServerSession(authOptions)
     
     if (!session) {
       return NextResponse.json(
