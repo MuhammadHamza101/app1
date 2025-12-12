@@ -3,6 +3,7 @@ import { Job } from 'bullmq'
 import { db } from '@/lib/db'
 import { parseBufferByType } from './extractors'
 import { IngestionJobData, IngestionResult, NormalizedPatent } from './types'
+import { decryptBuffer } from '@/lib/crypto'
 
 function parseDate(value?: string) {
   if (!value) return undefined
@@ -57,7 +58,25 @@ export async function processIngestionJob(
 
   for (const file of job.data.files) {
     try {
-      const buffer = Buffer.from(file.data, 'base64')
+      if (file.retentionUntil && new Date(file.retentionUntil) < new Date()) {
+        await job.log(`Skipped expired file ${file.name}`)
+        processed += 1
+        await job.updateProgress({
+          percent: Math.round((processed / totalFiles) * 100),
+          processed,
+          total: totalFiles,
+          currentFile: file.name,
+        })
+        continue
+      }
+
+      const buffer = file.iv && file.authTag
+        ? decryptBuffer({
+            ciphertext: file.data,
+            iv: file.iv,
+            authTag: file.authTag,
+          })
+        : Buffer.from(file.data, 'base64')
       const patents = await parseBufferByType(buffer, file.name, file.type)
 
       for (const patent of patents) {

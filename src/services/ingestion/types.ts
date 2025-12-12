@@ -2,6 +2,9 @@ export interface IngestionFilePayload {
   name: string
   type: string
   data: string
+  iv?: string
+  authTag?: string
+  retentionUntil?: string
 }
 
 export interface NormalizedPatent {

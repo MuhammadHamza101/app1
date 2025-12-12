@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { enqueueIngestionJob, getIngestionJobStatus } from '@/services/ingestion'
+import { encryptBuffer } from '@/lib/crypto'
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,14 +18,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No files uploaded' }, { status: 400 })
     }
 
+    const retentionDays = Number(process.env.FILE_RETENTION_DAYS || '30')
+    const retentionUntil = new Date(
+      Date.now() + retentionDays * 24 * 60 * 60 * 1000
+    ).toISOString()
+
     const uploadPayload = await Promise.all(
       files.map(async (file) => {
         if (!(file instanceof File)) return null
         const buffer = Buffer.from(await file.arrayBuffer())
+        const encrypted = encryptBuffer(buffer)
         return {
           name: file.name,
           type: file.type || 'application/octet-stream',
-          data: buffer.toString('base64'),
+          data: encrypted.ciphertext,
+          iv: encrypted.iv,
+          authTag: encrypted.authTag,
+          retentionUntil,
         }
       })
     )
