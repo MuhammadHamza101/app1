@@ -243,6 +243,7 @@ model Patent {
   id                String        @id @default(cuid())
   title             String
   abstract          String?
+  claimsText        String?
   applicationNumber String?
   publicationNumber String?
   jurisdiction      String?
@@ -250,6 +251,12 @@ model Patent {
   sourceFile        String?
   content           String
   metadata          Json?
+  classifications   Json?
+  ipcClasses        String?
+  cpcClasses        String?
+  assignee          String?
+  filingDate        DateTime?
+  publicationDate   DateTime?
   status            PatentStatus  @default(PENDING)
   firmId            String?
   createdBy         String

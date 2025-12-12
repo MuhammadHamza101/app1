@@ -7,6 +7,14 @@ export interface IngestionFilePayload {
 export interface NormalizedPatent {
   title: string
   abstract?: string
+  claims?: string[]
+  classifications?: {
+    ipc?: string[]
+    cpc?: string[]
+  }
+  assignee?: string
+  filingDate?: string
+  publicationDate?: string
   applicationNumber?: string
   publicationNumber?: string
   jurisdiction?: string
