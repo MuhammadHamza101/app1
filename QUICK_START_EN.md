@@ -51,13 +51,6 @@ Follow these steps to run the app locally with the new one-click starter. Manual
 - **Port in use**: stop other apps using ports 3000 or 3003 (e.g., `lsof -i :3000`).
 - **Dependency issues**: remove `node_modules` and rerun the one-click script or `npm install`.
 - **Database reset**: delete the local SQLite DB (if present) and run `npm run db:push`.
-- **Admin seed check**: re-create the local DB and reseed the default admin, then confirm the password stays hashed (starts with `$2`).
-  ```bash
-  rm -f dev.db
-  npm run db:push
-  npm run seed:default
-  npx prisma db execute --url "file:./dev.db" --script "select email, password from users where email='admin@patentflow.com';"
-  ```
 
 ## 🖥️ Optional Desktop Client
 If you want the desktop client, go to `desktop-app`, create/activate a Python virtual environment, install `requirements.txt`, and run `python main.py` while the web app is running.

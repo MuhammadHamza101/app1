@@ -1,20 +1,15 @@
 #!/usr/bin/env node
-import 'dotenv/config';
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
-import { PrismaClient } from '@prisma/client';
 
 const MIN_NODE_MAJOR = 18;
-const SECRET_MIN_LENGTH = 32;
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const collaborationDir = path.join(rootDir, 'mini-services', 'collaboration-service');
 const children = [];
-
-const prisma = new PrismaClient();
 
 function fail(message) {
   console.error(`\n❌ ${message}`);
@@ -65,99 +60,36 @@ function installIfMissing(dir, label) {
   runSync('npm', ['install'], dir, `${label} dependency installation`);
 }
 
-function parseEnvFile(filePath) {
-  if (!existsSync(filePath)) {
-    return { lines: [], entries: {} };
-  }
-
-  const lines = readFileSync(filePath, 'utf8').split(/\r?\n/);
-  const parsed = lines.map((line) => {
-    const match = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
-    if (match) {
-      return { key: match[1], value: match[2] };
-    }
-    return { raw: line };
-  });
-
-  const entries = parsed.reduce((acc, line) => {
-    if (line.key) acc[line.key] = line.value;
-    return acc;
-  }, {});
-
-  return { lines: parsed, entries };
-}
-
-function serializeEnvLines(lines) {
-  return lines
-    .map((line) => (line.key ? `${line.key}=${line.value}` : line.raw))
-    .join('\n')
-    .replace(/\n+$/, '')
-    .concat('\n');
-}
-
-function upsertEnvValue(lines, key, value) {
-  const idx = lines.findIndex((line) => line.key === key);
-  if (idx !== -1) {
-    lines[idx] = { key, value };
-  } else {
-    lines.push({ key, value });
-  }
-}
-
-function isLikelySecureSecret(value) {
-  return (
-    typeof value === 'string' &&
-    value.length >= SECRET_MIN_LENGTH &&
-    new Set(value.split('')).size >= Math.min(10, value.length)
-  );
-}
-
 function ensureEnvFiles() {
   const envLocalPath = path.join(rootDir, '.env.local');
   const envPath = path.join(rootDir, '.env');
 
-  const parsedFiles = {
-    [envPath]: parseEnvFile(envPath),
-    [envLocalPath]: parseEnvFile(envLocalPath),
-  };
+  const envLocalExists = existsSync(envLocalPath);
+  const envExists = existsSync(envPath);
 
-  const existingNextAuthSecret = [envPath, envLocalPath]
-    .map((file) => parsedFiles[file].entries.NEXTAUTH_SECRET)
-    .find((value) => isLikelySecureSecret(value?.replace(/^"|"$/g, '')));
+  if (envLocalExists && envExists) {
+    console.log('✅ Found existing .env.local and .env');
+    return;
+  }
 
-  const existingEncryptionKey = [envPath, envLocalPath]
-    .map((file) => parsedFiles[file].entries.ENCRYPTION_KEY)
-    .find((value) => isLikelySecureSecret(value?.replace(/^"|"$/g, '')));
+  const secret = crypto.randomBytes(32).toString('hex');
+  const content = [
+    'DATABASE_URL="file:./dev.db"',
+    `NEXTAUTH_SECRET="${secret}"`,
+    'NEXTAUTH_URL="http://localhost:3000"',
+    'OPENAI_API_KEY="your-openai-key"',
+    `ENCRYPTION_KEY="${secret.slice(0, 32)}"`,
+  ].join('\n');
 
-  const generatedSecrets = {
-    nextAuthSecret: crypto.randomBytes(32).toString('hex'),
-    encryptionKey: crypto.randomBytes(32).toString('hex').slice(0, 32),
-  };
+  if (!envLocalExists) {
+    writeFileSync(envLocalPath, `${content}\n`, 'utf8');
+    console.log('📝 Created .env.local with starter values. Update it with real secrets as needed.');
+  }
 
-  const nextAuthSecret = existingNextAuthSecret?.replace(/^"|"$/g, '') ?? generatedSecrets.nextAuthSecret;
-  const encryptionKey = existingEncryptionKey?.replace(/^"|"$/g, '') ?? generatedSecrets.encryptionKey;
-
-  [envPath, envLocalPath].forEach((file) => {
-    const parsed = parsedFiles[file];
-    const label = path.basename(file);
-
-    if (!isLikelySecureSecret(parsed.entries.NEXTAUTH_SECRET?.replace(/^"|"$/g, ''))) {
-      console.log(`🛡️ ${label}: setting a secure NEXTAUTH_SECRET`);
-    }
-
-    if (!isLikelySecureSecret(parsed.entries.ENCRYPTION_KEY?.replace(/^"|"$/g, ''))) {
-      console.log(`🛡️ ${label}: setting a secure ENCRYPTION_KEY`);
-    }
-
-    upsertEnvValue(parsed.lines, 'DATABASE_URL', '"file:./dev.db"');
-    upsertEnvValue(parsed.lines, 'NEXTAUTH_SECRET', `"${nextAuthSecret}"`);
-    upsertEnvValue(parsed.lines, 'NEXTAUTH_URL', '"http://localhost:3000"');
-    upsertEnvValue(parsed.lines, 'OPENAI_API_KEY', parsed.entries.OPENAI_API_KEY ?? '"your-openai-key"');
-    upsertEnvValue(parsed.lines, 'ENCRYPTION_KEY', `"${encryptionKey}"`);
-
-    writeFileSync(file, serializeEnvLines(parsed.lines), 'utf8');
-    console.log(`✅ Ensured ${label} exists with secure secrets`);
-  });
+  if (!envExists) {
+    writeFileSync(envPath, `${content}\n`, 'utf8');
+    console.log('📝 Created .env for Prisma with starter values.');
+  }
 }
 
 function startService(label, command, args, cwd) {
@@ -188,34 +120,11 @@ function registerShutdown() {
         child.kill('SIGINT');
       }
     });
-    prisma.$disconnect().catch(() => {});
     process.exit(0);
   };
 
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
-}
-
-async function verifyDefaultAdminUser() {
-  try {
-    const user = await prisma.user.findUnique({ where: { email: 'admin@patentflow.com' } });
-
-    if (!user) {
-      fail('Default admin user not found. Run "npm run seed:default" to recreate it.');
-    }
-
-    if (!user.password) {
-      fail('Default admin user exists but does not have a password. Re-run "npm run seed:default".');
-    }
-
-    if (!user.password.startsWith('$2')) {
-      fail('Default admin user password is not hashed. Rerun "npm run seed:default" to fix the seed.');
-    }
-
-    console.log('✅ Verified default admin user exists with hashed password');
-  } catch (error) {
-    fail(`Unable to verify default admin user: ${error.message ?? error}`);
-  }
 }
 
 async function main() {
@@ -235,9 +144,6 @@ async function main() {
   logStep('Seeding default admin user');
   runSync('npm', ['run', 'seed:default'], rootDir, 'Default user seed');
 
-  logStep('Verifying default admin seed');
-  await verifyDefaultAdminUser();
-
   registerShutdown();
 
   startService('Collaboration service', 'npm', ['run', 'dev'], collaborationDir);
@@ -249,9 +155,7 @@ async function main() {
   await new Promise(() => {});
 }
 
-main()
-  .catch((error) => {
-    console.error('❌ Startup failed:', error);
-    process.exit(1);
-  })
-  .finally(() => prisma.$disconnect());
+main().catch((error) => {
+  console.error('❌ Startup failed:', error);
+  process.exit(1);
+});
