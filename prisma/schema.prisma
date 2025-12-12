@@ -19,6 +19,9 @@ model User {
   role        UserRole @default(PARALEGAL)
   firmId      String?
   isActive    Boolean  @default(true)
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret  String?
+  backupCodes      Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
@@ -27,6 +30,9 @@ model User {
   documents   Document[]
   analyses    Analysis[]
   comments    Comment[]
+  patents     Patent[]
+  patentComments PatentComment[]
+  aiAuditLogs    AiAuditLog[]
   sessions    Session[]
   
   @@map("users")
@@ -43,7 +49,8 @@ model Firm {
   // Relations
   users       User[]
   documents   Document[]
-  
+  patents     Patent[]
+
   @@map("firms")
 }
 
@@ -232,8 +239,74 @@ model Comment {
   // Relations
   document      Document @relation(fields: [documentId], references: [id])
   user          User     @relation(fields: [userId], references: [id])
-  
+
   @@map("comments")
+}
+
+// Patent ingestion and normalization
+model Patent {
+  id                String        @id @default(cuid())
+  title             String
+  abstract          String?
+  claimsText        String?
+  applicationNumber String?
+  publicationNumber String?
+  jurisdiction      String?
+  language          String?
+  sourceFile        String?
+  content           String
+  metadata          Json?
+  classifications   Json?
+  ipcClasses        String?
+  cpcClasses        String?
+  assignee          String?
+  filingDate        DateTime?
+  publicationDate   DateTime?
+  status            PatentStatus  @default(PENDING)
+  firmId            String?
+  createdBy         String
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  firm    Firm? @relation(fields: [firmId], references: [id])
+  creator User  @relation(fields: [createdBy], references: [id])
+
+  comments PatentComment[]
+  aiAudit  AiAuditLog[]
+
+  @@map("patents")
+}
+
+model PatentComment {
+  id        String   @id @default(cuid())
+  patentId  String
+  userId    String
+  role      UserRole
+  threadKey String?
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patent Patent @relation(fields: [patentId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@map("patent_comments")
+}
+
+model AiAuditLog {
+  id        String   @id @default(cuid())
+  patentId  String?
+  userId    String?
+  action    String
+  prompt    String
+  response  String
+  provider  String
+  createdAt DateTime @default(now())
+
+  patent Patent? @relation(fields: [patentId], references: [id])
+  user   User?   @relation(fields: [userId], references: [id])
+
+  @@map("ai_audit_logs")
 }
 
 // Enums
@@ -344,4 +417,11 @@ enum CommentStatus {
   OPEN
   RESOLVED
   CLOSED
+}
+
+enum PatentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }

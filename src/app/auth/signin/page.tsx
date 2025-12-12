@@ -20,6 +20,9 @@ export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [isRegistering, setIsRegistering] = useState(false)
+  const [otp, setOtp] = useState('')
+  const [mfaSecret, setMfaSecret] = useState('')
+  const [backupCodes, setBackupCodes] = useState<string[]>([])
   
   const router = useRouter()
 
@@ -32,6 +35,7 @@ export default function SignInPage() {
       const result = await signIn('credentials', {
         email,
         password,
+        otp,
         redirect: false,
       })
 
@@ -68,13 +72,11 @@ export default function SignInPage() {
       const data = await response.json()
 
       if (response.ok) {
-        // Auto sign in after registration
-        await signIn('credentials', {
-          email,
-          password,
-          redirect: false,
-        })
-        router.push('/dashboard')
+        setMfaSecret(data.user.twoFactorSecret)
+        setBackupCodes(data.user.backupCodes || [])
+        setError('')
+        setIsRegistering(false)
+        return
       } else {
         setError(data.error || 'Registration failed')
       }
@@ -126,6 +128,18 @@ export default function SignInPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signin-otp">One-time code</Label>
+                    <Input
+                      id="signin-otp"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]{6}"
+                      placeholder="Required if MFA is enabled"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
                     />
                   </div>
                   {error && (
@@ -215,9 +229,9 @@ export default function SignInPage() {
                       <AlertDescription>{error}</AlertDescription>
                     </Alert>
                   )}
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
+                  <Button
+                    type="submit"
+                    className="w-full"
                     disabled={isRegistering}
                   >
                     {isRegistering ? (
@@ -230,6 +244,33 @@ export default function SignInPage() {
                     )}
                   </Button>
                 </form>
+                {(mfaSecret || backupCodes.length > 0) && (
+                  <Alert>
+                    <AlertDescription>
+                      <div className="space-y-2">
+                        <p className="font-semibold">Multi-factor authentication required</p>
+                        {mfaSecret && (
+                          <p className="break-words text-sm">
+                            Add this secret to your authenticator app: <strong>{mfaSecret}</strong>
+                          </p>
+                        )}
+                        {backupCodes.length > 0 && (
+                          <div>
+                            <p className="text-sm">Backup codes (store securely):</p>
+                            <ul className="list-disc pl-5 text-sm">
+                              {backupCodes.map((code) => (
+                                <li key={code}>{code}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        <p className="text-sm text-muted-foreground">
+                          Use the one-time code from your authenticator to sign in above. Keep backup codes offline.
+                        </p>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
               </TabsContent>
             </Tabs>
           </CardContent>

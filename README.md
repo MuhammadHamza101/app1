@@ -161,6 +161,17 @@ sqlite3 data/dev.db ".schema"
    npm run db:push
    ```
 
+4. **管理员账号/种子验证问题**
+   ```bash
+   # 重新创建本地数据库并重新播种默认管理员
+   rm -f dev.db
+   npm run db:push
+   npm run seed:default
+
+   # 验证管理员账号是否存在且密码已哈希（应以 $2 开头）
+   npx prisma db execute --url "file:./dev.db" --script "select email, password from users where email='admin@patentflow.com';"
+   ```
+
 4. **Python环境问题**
    ```bash
    # 重新创建虚拟环境
