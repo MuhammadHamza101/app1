@@ -1,96 +1,57 @@
-# ⚡ PatentFlow Enterprise - Quick Start Guide
+# ⚡ PatentFlow Enterprise - Quick Start (English)
 
-## 🚀 Start in 3 Simple Steps
+Follow these steps to run the app locally with the new one-click starter. Manual commands are also provided as a fallback.
 
-### Step 1: Launch Web App
-```bash
-cd /home/z/my-project
-npm run dev
-```
+## ✅ Prerequisites
+- Node.js 18+ with npm
+- Python 3.9+ (only if you plan to run the optional desktop client)
+- ~10 GB free disk space
 
-### Step 2: Launch Collaboration Service (New Terminal)
-```bash
-cd /home/z/my-project/mini-services/collaboration-service
-npm run dev
-```
+## 🚀 One-Click Start (Recommended)
+1. Open a terminal and change into the project root (where `package.json` lives).
+2. Run the starter script:
+   ```bash
+   npm run one-click-start
+   ```
+3. Wait for the script to:
+   - Check Node.js/npm availability
+   - Create `.env.local` with sample values if missing
+   - Install dependencies for the web app and collaboration service
+   - Apply the Prisma schema to the local SQLite database
+   - Launch the web app on http://localhost:3000 and the collaboration service on port 3003
+   - Keep everything local: no external APIs or cloud calls are used.
+4. Keep the terminal open while you use the app. Press **Ctrl+C** to stop all services together.
 
-### Step 3: Open Browser
-Go to: **http://localhost:3000**
+## 🔄 Manual Start (If You Prefer Running Commands Yourself)
+1. Install dependencies and set up the database in the project root:
+   ```bash
+   npm install
+   npm run db:push
+   ```
+2. Start the web app:
+   ```bash
+   npm run dev
+   ```
+3. In a new terminal, start the collaboration service:
+   ```bash
+   cd mini-services/collaboration-service
+   npm install
+   npm run dev
+   ```
 
-## 🔑 Login Credentials
-- **Email**: admin@patentflow.com
-- **Password**: admin123
+## 🔑 Login
+- Email: `admin@patentflow.com`
+- Password: `admin123`
 
-## 📱 Main Features Available
+## 🧪 Quick Checks After Launch
+- Visit http://localhost:3000 and log in.
+- Open http://localhost:3000/dashboard to confirm authenticated routes work.
+- (Optional) Open two browser windows at http://localhost:3000/collaboration to verify real-time sync.
 
-- 🏠 **Home Page**: Product overview and demo
-- 📊 **Dashboard**: Enterprise control center
-- 🗄️ **Document Vault**: Encrypted file storage
-- 📈 **Analytics**: Patent analysis tools
-- 🤝 **Collaboration**: Real-time teamwork
-- 🔐 **Authentication**: Secure user management
+## 🛠️ Troubleshooting
+- **Port in use**: stop other apps using ports 3000 or 3003 (e.g., `lsof -i :3000`).
+- **Dependency issues**: remove `node_modules` and rerun the one-click script or `npm install`.
+- **Database reset**: delete the local SQLite DB (if present) and run `npm run db:push`.
 
-## 🎯 What You Can Do Right Now
-
-### ✅ Test Core Features
-- Login with admin account
-- Upload and manage patent documents
-- Run AI-powered patent analysis
-- Test real-time collaboration (open 2 browsers)
-- View analytics dashboard
-- Manage user permissions
-
-### ✅ Explore Enterprise Features
-- AES-256 document encryption
-- Role-based access control
-- Audit logging and compliance
-- Multi-user collaboration
-- Business intelligence reports
-
-## 🔧 If Something Goes Wrong
-
-### Check Services
-```bash
-# Check if ports are in use
-lsof -i :3000  # Web app
-lsof -i :3003  # Collaboration service
-```
-
-### Reset Everything
-```bash
-cd /home/z/my-project
-rm -rf node_modules package-lock.json
-npm install
-npm run db:push
-npm run dev
-```
-
-## 📞 Quick Help
-
-### Common Issues
-- **Port 3000 busy**: Kill existing Node processes
-- **Database errors**: Run `npm run db:push`
-- **Context errors**: Already fixed ✅
-- **Login issues**: Use admin@patentflow.com / admin123
-
-### Status Check
-- ✅ Code linting passed
-- ✅ All dependencies installed
-- ✅ Database schema ready
-- ✅ Services configured
-
----
-
-## 🎉 Ready to Use!
-
-**PatentFlow Enterprise** is a complete, production-ready patent drafting and analysis platform with:
-
-- 🔐 Enterprise-grade security
-- 🤖 AI-powered analysis
-- 🔄 Real-time collaboration
-- 📊 Business intelligence
-- 🗄️ Encrypted document vault
-
-**Start now**: http://localhost:3000
-
-The platform is fully functional and ready for professional use! 🚀
+## 🖥️ Optional Desktop Client
+If you want the desktop client, go to `desktop-app`, create/activate a Python virtual environment, install `requirements.txt`, and run `python main.py` while the web app is running.
