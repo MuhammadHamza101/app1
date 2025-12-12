@@ -60,10 +60,15 @@ function installIfMissing(dir, label) {
   runSync('npm', ['install'], dir, `${label} dependency installation`);
 }
 
-function ensureEnvFile() {
-  const envPath = path.join(rootDir, '.env.local');
-  if (existsSync(envPath)) {
-    console.log(`✅ Found existing .env.local`);
+function ensureEnvFiles() {
+  const envLocalPath = path.join(rootDir, '.env.local');
+  const envPath = path.join(rootDir, '.env');
+
+  const envLocalExists = existsSync(envLocalPath);
+  const envExists = existsSync(envPath);
+
+  if (envLocalExists && envExists) {
+    console.log('✅ Found existing .env.local and .env');
     return;
   }
 
@@ -76,8 +81,15 @@ function ensureEnvFile() {
     `ENCRYPTION_KEY="${secret.slice(0, 32)}"`,
   ].join('\n');
 
-  writeFileSync(envPath, `${content}\n`, 'utf8');
-  console.log(`📝 Created .env.local with starter values. Update it with real secrets as needed.`);
+  if (!envLocalExists) {
+    writeFileSync(envLocalPath, `${content}\n`, 'utf8');
+    console.log('📝 Created .env.local with starter values. Update it with real secrets as needed.');
+  }
+
+  if (!envExists) {
+    writeFileSync(envPath, `${content}\n`, 'utf8');
+    console.log('📝 Created .env for Prisma with starter values.');
+  }
 }
 
 function startService(label, command, args, cwd) {
@@ -121,7 +133,7 @@ async function main() {
   ensureNodeVersion();
   assertCommandAvailable('npm', 'npm');
 
-  ensureEnvFile();
+  ensureEnvFiles();
 
   installIfMissing(rootDir, 'Web app');
   installIfMissing(collaborationDir, 'Collaboration service');
