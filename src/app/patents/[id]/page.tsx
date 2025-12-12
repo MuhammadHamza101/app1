@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { db } from '@/lib/db'
+import { AnalysisRunPanel } from '@/components/patents/analysis-run-panel'
 
 function escapeHtml(text: string) {
   return text
@@ -96,13 +97,16 @@ export default async function PatentDetailPage({
         <CardContent className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: highlightText(patent.abstract, query) }} />
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Claims</CardTitle>
-          <CardDescription>Flattened claim set used in hybrid ranking</CardDescription>
-        </CardHeader>
-        <CardContent className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: highlightText(patent.claimsText, query) }} />
-      </Card>
+      <div className="grid gap-6 lg:grid-cols-[1.15fr,0.85fr]">
+        <AnalysisRunPanel patentId={patent.id} claimsText={patent.claimsText} />
+        <Card>
+          <CardHeader>
+            <CardTitle>Claims</CardTitle>
+            <CardDescription>Flattened claim set used in hybrid ranking</CardDescription>
+          </CardHeader>
+          <CardContent className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: highlightText(patent.claimsText, query) }} />
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>
