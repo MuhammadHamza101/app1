@@ -32,7 +32,14 @@ model User {
   comments       Comment[]
   patents        Patent[]
   patentComments PatentComment[]
+  annotationsAuthored Annotation[]       @relation("AnnotationAuthor")
+  annotationsAssigned Annotation[]       @relation("AnnotationAssignee")
+  priorArtLinks       PriorArtLink[]
+  approvals           PatentApproval[]
+  reviewAssignments   PatentAssignment[]
   aiAuditLogs    AiAuditLog[]
+  ingestionJobs  IngestionJob[]
+  analysisRuns   AnalysisRun[]
   sessions       Session[]
 
   @@map("users")
@@ -258,6 +265,81 @@ model PatentComment {
   @@map("patent_comments")
 }
 
+model Annotation {
+  id          String            @id @default(cuid())
+  patentId    String
+  createdBy   String
+  assigneeId  String?
+  targetLabel String?
+  startOffset Int
+  endOffset   Int
+  body        String
+  status      AnnotationStatus  @default(PENDING)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  patent   Patent @relation(fields: [patentId], references: [id])
+  author   User   @relation("AnnotationAuthor", fields: [createdBy], references: [id])
+  assignee User?  @relation("AnnotationAssignee", fields: [assigneeId], references: [id])
+
+  @@index([patentId])
+  @@index([assigneeId])
+  @@map("annotations")
+}
+
+model PriorArtLink {
+  id             String          @id @default(cuid())
+  patentId       String
+  linkedPatentId String?
+  externalTitle  String?
+  externalUrl    String?
+  reasoning      String
+  createdBy      String
+  createdAt      DateTime        @default(now())
+
+  patent Patent @relation(fields: [patentId], references: [id])
+  creator User  @relation(fields: [createdBy], references: [id])
+
+  @@index([patentId])
+  @@map("prior_art_links")
+}
+
+model PatentApproval {
+  id         String           @id @default(cuid())
+  patentId   String
+  reviewerId String
+  status     ApprovalStatus   @default(PENDING)
+  notes      String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  patent   Patent @relation(fields: [patentId], references: [id])
+  reviewer User   @relation(fields: [reviewerId], references: [id])
+
+  @@index([patentId])
+  @@index([reviewerId])
+  @@unique([patentId, reviewerId])
+  @@map("patent_approvals")
+}
+
+model PatentAssignment {
+  id         String            @id @default(cuid())
+  patentId   String
+  assigneeId String
+  role       AssignmentRole    @default(REVIEWER)
+  status     AssignmentStatus  @default(OPEN)
+  dueDate    DateTime?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  patent   Patent @relation(fields: [patentId], references: [id])
+  assignee User   @relation(fields: [assigneeId], references: [id])
+
+  @@index([patentId])
+  @@index([assigneeId])
+  @@map("patent_assignments")
+}
+
 // Patent intelligence
 model Patent {
   id                String       @id @default(cuid())
@@ -292,6 +374,12 @@ model Patent {
   embeddings PatentEmbedding[]
   tags       PatentTag[]
   comments   PatentComment[]
+  annotations Annotation[]
+  approvals   PatentApproval[]
+  assignments PatentAssignment[]
+  priorArt    PriorArtLink[]
+  aiAuditLogs AiAuditLog[]
+  analysisRuns AnalysisRun[]
 
   @@index([title, technology])
   @@map("patents")
@@ -384,33 +472,6 @@ model PatentInsight {
 
   @@index([patentId, createdAt])
   @@map("patent_insights")
-}
-
-model PatentComment {
-  id        String   @id @default(cuid())
-  patentId  String
-  userId    String
-  content   String
-  createdAt DateTime @default(now())
-
-  patent Patent @relation(fields: [patentId], references: [id])
-  user   User   @relation(fields: [userId], references: [id])
-
-  @@index([patentId])
-  @@map("patent_comments")
-}
-
-model AiAuditLog {
-  id        String   @id @default(cuid())
-  userId    String
-  action    String
-  metadata  Json?
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@index([userId, createdAt])
-  @@map("ai_audit_logs")
 }
 
 model AiAuditLog {
@@ -596,4 +657,49 @@ enum PatentIngestionStatus {
   PROCESSING
   COMPLETED
   FAILED
+}
+
+enum IngestionJobStatus {
+  QUEUED
+  RUNNING
+  COMPLETE
+  FAILED
+}
+
+enum AnalysisRunType {
+  SAFETY_REVIEW
+  NOVELTY_SCAN
+  CLAIM_SUMMARY
+}
+
+enum AnalysisRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum AnnotationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  RESOLVED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AssignmentStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+}
+
+enum AssignmentRole {
+  REVIEWER
+  APPROVER
+  COLLABORATOR
 }
