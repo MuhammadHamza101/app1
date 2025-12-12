@@ -67,8 +67,22 @@ class ApiConfig:
 
     auth_base_url: str = "http://localhost:3000/api/auth"
     search_base_url: str = "http://localhost:3000/api/search"
+    analysis_base_url: str = "http://localhost:3000/api/analysis"
+    annotation_base_url: str = "http://localhost:3000/api/annotations"
+    report_base_url: str = "http://localhost:3000/api/reports"
     ingestion_status_url: str = "http://localhost:3000/api/ingestion-status"
     review_tools_url: str = "http://localhost:3000/api/review-tools"
+    semantic_search_url: str = "http://localhost:3000/api/semantic-search"
+
+
+@dataclass
+class FeatureFlagsConfig:
+    """Feature flag toggles for desktop parity with web."""
+
+    ai_provider_choice: bool = True
+    semantic_search: bool = True
+    analytics_dashboards: bool = True
+    background_workers_enabled: bool = True
 
 
 @dataclass
@@ -105,6 +119,7 @@ class Config:
         self.api = ApiConfig()
         self.drafts = DraftCacheConfig()
         self.security = SecurityConfig()
+        self.features = FeatureFlagsConfig()
         
         # Load configuration from settings
         self._load_settings()
@@ -162,8 +177,12 @@ class Config:
         # API endpoints
         self.api.auth_base_url = self.settings.value("api/auth_base_url", self.api.auth_base_url)
         self.api.search_base_url = self.settings.value("api/search_base_url", self.api.search_base_url)
+        self.api.analysis_base_url = self.settings.value("api/analysis_base_url", self.api.analysis_base_url)
+        self.api.annotation_base_url = self.settings.value("api/annotation_base_url", self.api.annotation_base_url)
+        self.api.report_base_url = self.settings.value("api/report_base_url", self.api.report_base_url)
         self.api.ingestion_status_url = self.settings.value("api/ingestion_status_url", self.api.ingestion_status_url)
         self.api.review_tools_url = self.settings.value("api/review_tools_url", self.api.review_tools_url)
+        self.api.semantic_search_url = self.settings.value("api/semantic_search_url", self.api.semantic_search_url)
 
         # Draft cache
         self.drafts.enabled = self.settings.value("drafts/enabled", self.drafts.enabled, type=bool)
@@ -172,6 +191,12 @@ class Config:
         # Security settings
         self.security.encrypt_local_data = self.settings.value("security/encrypt_local_data", self.security.encrypt_local_data, type=bool)
         self.security.audit_logging = self.settings.value("security/audit_logging", self.security.audit_logging, type=bool)
+
+        # Feature flags
+        self.features.ai_provider_choice = self.settings.value("features/ai_provider_choice", self.features.ai_provider_choice, type=bool)
+        self.features.semantic_search = self.settings.value("features/semantic_search", self.features.semantic_search, type=bool)
+        self.features.analytics_dashboards = self.settings.value("features/analytics_dashboards", self.features.analytics_dashboards, type=bool)
+        self.features.background_workers_enabled = self.settings.value("features/background_workers_enabled", self.features.background_workers_enabled, type=bool)
         
     def save_settings(self):
         """Save configuration to QSettings"""
@@ -202,8 +227,12 @@ class Config:
         # API endpoints
         self.settings.setValue("api/auth_base_url", self.api.auth_base_url)
         self.settings.setValue("api/search_base_url", self.api.search_base_url)
+        self.settings.setValue("api/analysis_base_url", self.api.analysis_base_url)
+        self.settings.setValue("api/annotation_base_url", self.api.annotation_base_url)
+        self.settings.setValue("api/report_base_url", self.api.report_base_url)
         self.settings.setValue("api/ingestion_status_url", self.api.ingestion_status_url)
         self.settings.setValue("api/review_tools_url", self.api.review_tools_url)
+        self.settings.setValue("api/semantic_search_url", self.api.semantic_search_url)
 
         # Draft cache
         self.settings.setValue("drafts/enabled", self.drafts.enabled)
@@ -212,6 +241,12 @@ class Config:
         # Security settings
         self.settings.setValue("security/encrypt_local_data", self.security.encrypt_local_data)
         self.settings.setValue("security/audit_logging", self.security.audit_logging)
+
+        # Feature flags
+        self.settings.setValue("features/ai_provider_choice", self.features.ai_provider_choice)
+        self.settings.setValue("features/semantic_search", self.features.semantic_search)
+        self.settings.setValue("features/analytics_dashboards", self.features.analytics_dashboards)
+        self.settings.setValue("features/background_workers_enabled", self.features.background_workers_enabled)
         
         self.settings.sync()
         
@@ -234,6 +269,8 @@ class Config:
             'ui': self.ui.__dict__,
             'network': self.network.__dict__,
             'security': self.security.__dict__,
+            'api': self.api.__dict__,
+            'features': self.features.__dict__,
         }
         
         with open(file_path, 'w') as f:
@@ -257,6 +294,10 @@ class Config:
             self.network = NetworkConfig(**config_data['network'])
         if 'security' in config_data:
             self.security = SecurityConfig(**config_data['security'])
-            
+        if 'api' in config_data:
+            self.api = ApiConfig(**config_data['api'])
+        if 'features' in config_data:
+            self.features = FeatureFlagsConfig(**config_data['features'])
+
         # Save to QSettings
         self.save_settings()

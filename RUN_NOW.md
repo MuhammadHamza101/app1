@@ -154,7 +154,22 @@ DATABASE_URL="file:./dev.db"
 NEXTAUTH_SECRET="your-secret-key"
 NEXTAUTH_URL="http://localhost:3000"
 ENCRYPTION_KEY="your-32-character-key-here"
+# Desktop/worker flags
+FEATURE_FLAG_AI_PROVIDER="true"
+FEATURE_FLAG_SEMANTIC_SEARCH="true"
+FEATURE_FLAG_ANALYTICS_DASHBOARDS="true"
+BACKGROUND_WORKERS_ENABLED="true"
+ANNOTATION_API_URL="http://localhost:3000/api/annotations"
+ANALYSIS_API_URL="http://localhost:3000/api/analysis"
+REPORT_API_URL="http://localhost:3000/api/reports"
+SEMANTIC_SEARCH_URL="http://localhost:3000/api/semantic-search"
 ```
+
+### 🖥️ Desktop parity与离线缓存
+- 桌面客户端复用相同的会话令牌访问搜索、分析、注释和报告API。
+- 桌面端有JSON队列缓存离线注释/上传，恢复联网后自动同步并做时间戳冲突处理。
+- 本地缓存最近的专利与分析摘要用于离线浏览，后台上传/分析任务会推送状态通知。
+- Grafana/OpenTelemetry 仪表盘可用于追踪桌面触发的摄取、搜索与AI流水线。
 
 ### 🎯 企业功能亮点
 
