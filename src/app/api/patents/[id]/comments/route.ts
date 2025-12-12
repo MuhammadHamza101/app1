@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { broadcastToRoom } from '@/lib/realtime'
 import { z } from 'zod'
 
 const createSchema = z.object({
@@ -56,5 +57,6 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     },
   })
 
+  broadcastToRoom(`patent-${params.id}`, 'comment.created', comment)
   return NextResponse.json({ comment })
 }

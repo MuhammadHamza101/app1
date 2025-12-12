@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -31,12 +31,21 @@ import PatentFlowDemo from '@/components/patentflow/PatentFlowDemo'
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const [reviewQueue, setReviewQueue] = useState<any[]>([])
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.replace('/auth/signin')
     }
   }, [status, router])
+
+  useEffect(() => {
+    if (!session?.user) return
+    fetch('/api/reviews')
+      .then((res) => res.json())
+      .then((payload) => setReviewQueue(payload.assignments || []))
+      .catch(() => setReviewQueue([]))
+  }, [session?.user])
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: '/auth/signin' })
@@ -187,6 +196,33 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             </div>
+
+            <Card>
+              <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0">
+                <div>
+                  <CardTitle>My reviews</CardTitle>
+                  <CardDescription>Assignments routed from the patent workspace.</CardDescription>
+                </div>
+                <Badge variant="outline">{reviewQueue.length || 0} open</Badge>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {reviewQueue.length === 0 && <p className="text-sm text-muted-foreground">No active review assignments yet.</p>}
+                {reviewQueue.map((assignment) => (
+                  <div key={assignment.id} className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <p className="font-semibold text-sm">{assignment.patent?.title || 'Unlabeled patent'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {assignment.patent?.applicationNumber || assignment.patent?.publicationNumber || assignment.patent?.id}
+                      </p>
+                    </div>
+                    <div className="text-right text-xs text-muted-foreground space-y-1">
+                      <Badge variant="secondary">{assignment.role}</Badge>
+                      <div>{assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'No due date'}</div>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
 
             {/* Recent Activity */}
             <Card>
