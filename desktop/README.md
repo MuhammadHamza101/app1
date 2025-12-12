@@ -139,8 +139,12 @@ PatentFlow Desktop is a premium patent drafting and analysis application built w
 ### API Settings
 - **Auth Base URL**: Endpoint for login/refresh flows
 - **Search Base URL**: Endpoint for corpus search and semantic retrieval
+- **Analysis Base URL**: Endpoint for background analysis/LLM pipelines
+- **Annotation Base URL**: Endpoint for annotations and review state
+- **Report Base URL**: Endpoint for downloadable analysis reports
 - **Ingestion Status URL**: Endpoint for monitoring queue progress
 - **Review Tools URL**: Endpoint powering automated review helpers
+- **Semantic Search URL**: Endpoint for vector/semantic retrieval
 
 ### Interface Settings
 - **Theme**: Dark/Light/Auto theme selection
@@ -152,6 +156,12 @@ PatentFlow Desktop is a premium patent drafting and analysis application built w
 - **Draft cache**: Enabled by default; stores drafts in `~/.local/share/patentflow` (Linux), `%LOCALAPPDATA%\\patentflow` (Windows), or `~/Library/Application Support/patentflow` (macOS).
 - **Autosave**: Respects the UI auto-save interval; cached drafts reload automatically when the same document checksum is opened.
 - **Cleanup**: Remove cached entries by deleting `drafts.json` in the data directory.
+
+### Offline sync and desktop parity
+- **Sync queue**: A JSON-backed queue persists annotation and upload tasks while offline and replays them when connectivity returns.
+- **Conflict handling**: The desktop client prefers the most recent update timestamp when reconciling with the server.
+- **Background uploads**: Upload/analysis triggers can run from the desktop client; progress is surfaced through status notifications.
+- **Shared auth**: API clients use the same bearer token that powers the desktop session so calls stay aligned with the web workspace.
 
 ### Security Settings
 - **Encryption**: Enable local data encryption
