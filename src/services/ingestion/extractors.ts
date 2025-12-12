@@ -7,6 +7,14 @@ import { NormalizedPatent } from './types'
 
 const languageDetector = new LanguageDetect()
 
+function normalizeList(value?: string | null) {
+  if (!value) return undefined
+  return value
+    .split(/[,;\n]/)
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+}
+
 export function detectLanguageFromText(text: string | undefined | null) {
   if (!text || !text.trim()) return undefined
   try {
@@ -64,6 +72,14 @@ export function parseCsvBuffer(
     return {
       title: row.title || `${filename} #${index + 1}`,
       abstract: row.abstract,
+      claims: normalizeList(row.claims),
+      classifications: {
+        ipc: normalizeList(row.ipc || row.ipcClasses || row.ipc_codes),
+        cpc: normalizeList(row.cpc || row.cpcClasses || row.cpc_codes),
+      },
+      assignee: row.assignee || row.applicant,
+      filingDate: row.filingDate || row.filing_date,
+      publicationDate: row.publicationDate || row.publication_date,
       applicationNumber: row.applicationNumber || row.application_number,
       publicationNumber: row.publicationNumber || row.publication_number,
       jurisdiction: row.jurisdiction,

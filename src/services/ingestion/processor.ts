@@ -4,13 +4,26 @@ import { db } from '@/lib/db'
 import { parseBufferByType } from './extractors'
 import { IngestionJobData, IngestionResult, NormalizedPatent } from './types'
 
+function parseDate(value?: string) {
+  if (!value) return undefined
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed
+}
+
 async function persistPatent(patent: NormalizedPatent, job: Job<IngestionJobData>) {
   const abstract = patent.abstract || patent.content.slice(0, 1000)
+  const claimsText = patent.claims?.join('\n').trim()
+  const ipcClasses = patent.classifications?.ipc?.join(', ')
+  const cpcClasses = patent.classifications?.cpc?.join(', ')
+
+  const filingDate = parseDate(patent.filingDate)
+  const publicationDate = parseDate(patent.publicationDate)
 
   return db.patent.create({
     data: {
       title: patent.title,
       abstract,
+      claimsText,
       applicationNumber: patent.applicationNumber,
       publicationNumber: patent.publicationNumber,
       jurisdiction: patent.jurisdiction,
@@ -18,6 +31,12 @@ async function persistPatent(patent: NormalizedPatent, job: Job<IngestionJobData
       sourceFile: patent.sourceFile,
       content: patent.content || 'No text extracted',
       metadata: patent.metadata,
+      classifications: patent.classifications,
+      ipcClasses,
+      cpcClasses,
+      assignee: patent.assignee,
+      filingDate,
+      publicationDate,
       status: PatentStatus.COMPLETED,
       firmId: job.data.firmId || undefined,
       createdBy: job.data.userId,
