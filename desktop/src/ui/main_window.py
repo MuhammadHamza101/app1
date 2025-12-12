@@ -18,6 +18,7 @@ from loguru import logger
 from src.core.config import Config
 from src.core.word_bridge import ConnectionManager, DocumentExtractor, ConnectionState
 from src.core.navigation_handler import NavigationHandler
+from src.core.offline_cache import OfflineDraftCache
 from src.ui.analysis_view import AnalysisView
 from src.ui.claim_graph_view import ClaimGraphView
 from src.ui.settings_dialog import SettingsDialog
@@ -38,7 +39,8 @@ class MainWindow(QMainWindow):
         self.connection_manager = ConnectionManager(config)
         self.document_extractor = DocumentExtractor(self.connection_manager)
         self.navigation_handler = NavigationHandler(self.connection_manager)
-        
+        self.draft_cache = OfflineDraftCache(config.data_dir, config.drafts.cache_filename)
+
         # UI Components
         self.central_widget = None
         self.main_splitter = None
@@ -50,6 +52,7 @@ class MainWindow(QMainWindow):
         self.findings_tree = None
         self.status_bar = None
         self.progress_bar = None
+        self.auto_save_timer = None
         
         # Current document state
         self.current_document: Optional[DocumentSnapshot] = None
@@ -61,6 +64,7 @@ class MainWindow(QMainWindow):
         self.setup_menu_bar()
         self.setup_tool_bar()
         self.setup_status_bar()
+        self.setup_autosave()
         
         # Auto-connect to Word if enabled
         if self.config.word.auto_connect:
@@ -168,6 +172,17 @@ class MainWindow(QMainWindow):
         self.document_loaded.connect(self.on_document_loaded)
         self.analysis_completed.connect(self.on_analysis_completed)
         self.connection_changed.connect(self.on_connection_changed)
+
+    def setup_autosave(self):
+        """Configure periodic draft autosave."""
+        if not self.config.drafts.enabled:
+            return
+
+        self.auto_save_timer = QTimer(self)
+        interval_ms = max(1, self.config.ui.auto_save_interval_minutes) * 60 * 1000
+        self.auto_save_timer.setInterval(interval_ms)
+        self.auto_save_timer.timeout.connect(self.save_current_draft)
+        self.auto_save_timer.start()
         
     def setup_menu_bar(self):
         """Set up the menu bar"""
@@ -347,6 +362,15 @@ class MainWindow(QMainWindow):
     def on_document_loaded(self, snapshot: DocumentSnapshot):
         """Handle document loaded event"""
         logger.info(f"Document loaded: {len(snapshot.content)} characters")
+        self.current_document = snapshot
+        self.document_view.setPlainText(snapshot.content)
+        self.analyze_btn.setEnabled(True)
+        self.update_document_info()
+
+        cached = self.draft_cache.load_draft(snapshot.checksum)
+        if cached:
+            self.document_view.setPlainText(cached.content)
+            self.show_message("Loaded offline draft content for this document", "info")
         
     def on_analysis_completed(self, analysis_result):
         """Handle analysis completed event"""
@@ -449,6 +473,21 @@ class MainWindow(QMainWindow):
         """Show message to user (in status bar for now)"""
         self.status_bar.showMessage(message, 5000)
         logger.info(f"Message ({type}): {message}")
+
+    def save_current_draft(self):
+        """Persist current document state for offline recovery."""
+        if not self.config.drafts.enabled or not self.current_document:
+            return
+
+        content = self.document_view.toPlainText()
+        if not content.strip():
+            return
+
+        self.draft_cache.save_draft(
+            document_id=self.current_document.checksum,
+            content=content,
+            metadata={"analysis_ready": bool(self.current_findings)},
+        )
         
     def show_settings(self):
         """Show settings dialog"""
