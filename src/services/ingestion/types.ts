@@ -1,11 +1,7 @@
-export interface IngestionFilePayload {
-  name: string
-  type: string
-  data: string
-  iv?: string
-  authTag?: string
-  retentionUntil?: string
-}
+import { IngestionJobStatus } from '@prisma/client'
+import { StoredFileReference } from './storage'
+
+export type IngestionFilePayload = StoredFileReference
 
 export interface NormalizedPatent {
   title: string
@@ -28,6 +24,7 @@ export interface NormalizedPatent {
 }
 
 export interface IngestionJobData {
+  jobId: string
   userId: string
   firmId?: string | null
   files: IngestionFilePayload[]
@@ -38,4 +35,17 @@ export interface IngestionResult {
   filesProcessed: number
   languages: Record<string, number>
   errors: string[]
+}
+
+export interface IngestionJobDetail {
+  id: string
+  status: IngestionJobStatus
+  files: IngestionFilePayload[]
+  checksums?: Record<string, string>
+  errors?: string[]
+  extractedMetadata?: Record<string, unknown>
+  totalSize?: number
+  result?: IngestionResult
+  createdAt: string
+  updatedAt: string
 }
