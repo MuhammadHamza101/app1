@@ -4,6 +4,8 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
+import { authenticator } from 'otplib'
+import { auditEvent } from './audit'
 
 type ExtendedToken = {
   id?: string
@@ -15,6 +17,7 @@ type ExtendedToken = {
 const credentialsSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
+  otp: z.string().length(6).optional(),
 })
 
 async function getUserByEmail(email: string) {
@@ -41,7 +44,10 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         try {
-          const { email, password } = await credentialsSchema.parseAsync(credentials)
+          const submittedEmail = (credentials as any)?.email
+          const { email, password, otp } = await credentialsSchema.parseAsync(
+            credentials
+          )
           
           // Find user by email
           const user = await getUserByEmail(email)
@@ -59,7 +65,29 @@ export const authOptions: NextAuthOptions = {
           if (!user.isActive) {
             throw new Error('Account is deactivated')
           }
-          
+
+          if (user.twoFactorEnabled) {
+            const otpValid =
+              !!otp &&
+              !!user.twoFactorSecret &&
+              authenticator.verify({ token: otp, secret: user.twoFactorSecret })
+
+            if (!otpValid) {
+              await auditEvent({
+                type: 'auth.mfa_failed',
+                userId: user.id,
+                metadata: { email: user.email },
+              })
+              throw new Error('Multi-factor verification failed')
+            }
+          }
+
+          await auditEvent({
+            type: 'auth.login.success',
+            userId: user.id,
+            metadata: { email: user.email },
+          })
+
           return {
             id: user.id,
             email: user.email,
@@ -68,6 +96,13 @@ export const authOptions: NextAuthOptions = {
             firmId: user.firmId,
           }
         } catch (error) {
+          await auditEvent({
+            type: 'auth.login.failed',
+            metadata: {
+              email: (credentials as any)?.email || submittedEmail,
+              reason: (error as Error).message,
+            },
+          })
           console.error('Authorization error:', error)
           return null
         }
