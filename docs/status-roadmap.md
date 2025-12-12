@@ -1,6 +1,7 @@
 # PatentFlow Enterprise - Current Status & Execution Roadmap
 
 ## What is working today
+- **Local-first runtime**: All services (web + collaboration + SQLite) run on the same machine with no external APIs or font/CDN downloads; env templates avoid third-party keys so data stays on-device.
 - **Authentication & admin seeding**: Credential-based login via NextAuth + Prisma with bcrypt hashing and a default admin seeded by `npm run seed:default` (or automatically via `npm run one-click-start`). Environment secrets are generated if missing.
 - **Patent workspace foundation**: Prisma models for patents, ingestions, and insights; `/api/patents` supports intake + filtering; `/patents` lists seeded patents with latest insight + ingestion status; `/patents/upload` captures metadata and creates baseline insights.
 - **Collaboration service shell**: Socket.IO service supports joining document rooms, broadcasting edits/cursors/comments, and presence tracking.
