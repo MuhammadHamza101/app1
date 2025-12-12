@@ -27,6 +27,7 @@ model User {
   documents   Document[]
   analyses    Analysis[]
   comments    Comment[]
+  patents     Patent[]
   sessions    Session[]
   
   @@map("users")
@@ -43,7 +44,8 @@ model Firm {
   // Relations
   users       User[]
   documents   Document[]
-  
+  patents     Patent[]
+
   @@map("firms")
 }
 
@@ -232,8 +234,32 @@ model Comment {
   // Relations
   document      Document @relation(fields: [documentId], references: [id])
   user          User     @relation(fields: [userId], references: [id])
-  
+
   @@map("comments")
+}
+
+// Patent ingestion and normalization
+model Patent {
+  id                String        @id @default(cuid())
+  title             String
+  abstract          String?
+  applicationNumber String?
+  publicationNumber String?
+  jurisdiction      String?
+  language          String?
+  sourceFile        String?
+  content           String
+  metadata          Json?
+  status            PatentStatus  @default(PENDING)
+  firmId            String?
+  createdBy         String
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  firm    Firm? @relation(fields: [firmId], references: [id])
+  creator User  @relation(fields: [createdBy], references: [id])
+
+  @@map("patents")
 }
 
 // Enums
@@ -344,4 +370,11 @@ enum CommentStatus {
   OPEN
   RESOLVED
   CLOSED
+}
+
+enum PatentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }
