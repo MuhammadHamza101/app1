@@ -245,21 +245,30 @@ model Comment {
 
 // Patent intelligence
 model Patent {
-  id             String          @id @default(cuid())
-  number         String?         @unique
-  title          String
-  abstract       String?
-  claimsText     String?
-  jurisdiction   String?
-  assignee       String?
-  status         PatentStatus    @default(DRAFT)
-  filingDate     DateTime?
-  publicationDate DateTime?
-  technology     String?
-  keywords       String?
-  createdBy      String
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id                String          @id @default(cuid())
+  number            String?         @unique
+  title             String
+  abstract          String?
+  claimsText        String?
+  jurisdiction      String?
+  assignee          String?
+  status            PatentStatus    @default(DRAFT)
+  filingDate        DateTime?
+  publicationDate   DateTime?
+  technology        String?
+  keywords          String?
+  applicationNumber String?
+  publicationNumber String?
+  language          String?
+  sourceFile        String?
+  content           String?
+  metadata          Json?
+  classifications   Json?
+  ipcClasses        String?
+  cpcClasses        String?
+  createdBy         String
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
   // Relations
   creator        User            @relation(fields: [createdBy], references: [id])
@@ -268,6 +277,27 @@ model Patent {
 
   @@map("patents")
   @@index([title, technology])
+}
+
+model IngestionJob {
+  id               String               @id @default(cuid())
+  userId           String
+  firmId           String?
+  status           IngestionJobStatus   @default(QUEUED)
+  files            Json
+  extractedMetadata Json?
+  errors           Json?
+  checksums        Json?
+  totalSize        Int?
+  result           Json?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("ingestion_jobs")
+  @@index([status, createdAt])
 }
 
 model PatentIngestion {
@@ -423,6 +453,7 @@ enum PatentStatus {
   IN_REVIEW
   FLAGGED
   COMPLETE
+  COMPLETED
 }
 
 enum PatentSourceType {
@@ -440,4 +471,12 @@ enum PatentIngestionStatus {
   PROCESSING
   COMPLETED
   FAILED
+}
+
+enum IngestionJobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
 }

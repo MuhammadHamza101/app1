@@ -2,6 +2,7 @@ import AdmZip from 'adm-zip'
 import { parse as parseCsv } from 'csv-parse/sync'
 import pdfParse from 'pdf-parse'
 import LanguageDetect from 'languagedetect'
+import mammoth from 'mammoth'
 import path from 'path'
 import { NormalizedPatent } from './types'
 
@@ -45,6 +46,27 @@ export async function parsePdfBuffer(
         info: pdf.info,
         metadata: pdf.metadata?.info,
         numPages: pdf.numpages,
+      },
+      content: text,
+    },
+  ]
+}
+
+export async function parseDocxBuffer(
+  buffer: Buffer,
+  filename: string
+): Promise<NormalizedPatent[]> {
+  const result = await mammoth.extractRawText({ buffer })
+  const text = result.value?.trim() || ''
+
+  return [
+    {
+      title: filename.replace(/\.docx$/i, ''),
+      abstract: text.slice(0, 2000) || undefined,
+      language: detectLanguageFromText(text),
+      sourceFile: filename,
+      metadata: {
+        messages: result.messages,
       },
       content: text,
     },
@@ -106,6 +128,8 @@ export async function parseZipBuffer(
 
     if (extension === '.pdf') {
       results.push(...(await parsePdfBuffer(entryBuffer, entryName)))
+    } else if (extension === '.docx') {
+      results.push(...(await parseDocxBuffer(entryBuffer, entryName)))
     } else if (extension === '.csv') {
       results.push(...parseCsvBuffer(entryBuffer, entryName))
     }
@@ -131,6 +155,12 @@ export async function parseBufferByType(
   mimeType?: string
 ): Promise<NormalizedPatent[]> {
   const extension = path.extname(filename).toLowerCase()
+  if (mimeType ===
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    extension === '.docx'
+  ) {
+    return parseDocxBuffer(buffer, filename)
+  }
   if (mimeType === 'application/zip' || extension === '.zip') {
     return parseZipBuffer(buffer, filename)
   }

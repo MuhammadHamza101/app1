@@ -1,9 +1,9 @@
-import { PatentStatus } from '@prisma/client'
+import { IngestionJobStatus, PatentStatus } from '@prisma/client'
+import fs from 'fs/promises'
 import { Job } from 'bullmq'
 import { db } from '@/lib/db'
 import { parseBufferByType } from './extractors'
 import { IngestionJobData, IngestionResult, NormalizedPatent } from './types'
-import { decryptBuffer } from '@/lib/crypto'
 
 function parseDate(value?: string) {
   if (!value) return undefined
@@ -53,6 +53,12 @@ export async function processIngestionJob(
   let patentsCreated = 0
   const languageTally: Record<string, number> = {}
   const errors: string[] = []
+  const extractedMetadata: Array<Record<string, unknown>> = []
+
+  await db.ingestionJob.update({
+    where: { id: job.data.jobId },
+    data: { status: IngestionJobStatus.PROCESSING },
+  })
 
   await job.updateProgress({ percent: 0, processed, total: totalFiles })
 
@@ -70,23 +76,36 @@ export async function processIngestionJob(
         continue
       }
 
-      const buffer = file.iv && file.authTag
-        ? decryptBuffer({
-            ciphertext: file.data,
-            iv: file.iv,
-            authTag: file.authTag,
-          })
-        : Buffer.from(file.data, 'base64')
+      const buffer = await fs.readFile(file.storagePath)
       const patents = await parseBufferByType(buffer, file.name, file.type)
 
       for (const patent of patents) {
-        await persistPatent(patent, job)
+        await persistPatent(
+          {
+            ...patent,
+            sourceFile: file.name,
+            metadata: {
+              ...(patent.metadata || {}),
+              checksum: file.checksum,
+              storagePath: file.storagePath,
+              size: file.size,
+            },
+          },
+          job
+        )
         patentsCreated += 1
 
         if (patent.language) {
           languageTally[patent.language] = (languageTally[patent.language] || 0) + 1
         }
       }
+
+      extractedMetadata.push({
+        file: file.name,
+        checksum: file.checksum,
+        size: file.size,
+        parsedPatents: patents.length,
+      })
     } catch (error) {
       errors.push(`${file.name}: ${(error as Error).message}`)
       await job.log(`Failed to ingest ${file.name}: ${(error as Error).message}`)
@@ -95,12 +114,40 @@ export async function processIngestionJob(
     processed += 1
     const percent = totalFiles > 0 ? Math.round((processed / totalFiles) * 100) : 100
     await job.updateProgress({ percent, processed, total: totalFiles, currentFile: file.name })
+    await db.ingestionJob.update({
+      where: { id: job.data.jobId },
+      data: {
+        extractedMetadata,
+        errors,
+        status: IngestionJobStatus.PROCESSING,
+        result: {
+          patentsCreated,
+          filesProcessed: totalFiles,
+          languages: languageTally,
+          errors,
+        },
+        updatedAt: new Date(),
+      },
+    })
   }
 
-  return {
+  const result = {
     patentsCreated,
     filesProcessed: totalFiles,
     languages: languageTally,
     errors,
   }
+
+  await db.ingestionJob.update({
+    where: { id: job.data.jobId },
+    data: {
+      status: errors.length ? IngestionJobStatus.FAILED : IngestionJobStatus.COMPLETED,
+      extractedMetadata,
+      errors,
+      result,
+      updatedAt: new Date(),
+    },
+  })
+
+  return result
 }
