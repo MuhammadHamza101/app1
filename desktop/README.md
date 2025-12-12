@@ -25,6 +25,8 @@ PatentFlow Desktop is a premium patent drafting and analysis application built w
 - **Audit Trails**: Complete logging of all operations
 - **Professional UI**: Apple-style dark theme with responsive design
 - **Configuration**: Comprehensive settings management
+- **Offline drafts**: Local cache for unsent edits with auto-save
+- **API alignment**: Auth/search/ingestion/review tools endpoints configurable per environment
 
 ## Installation
 
@@ -63,6 +65,11 @@ PatentFlow Desktop is a premium patent drafting and analysis application built w
    ```bash
    python main.py
    ```
+
+### Platform builds and signing
+- **Windows (MSIX/EXE)**: Package with `pyinstaller --onefile --windowed main.py` and wrap the resulting executable in an MSIX using `makeappx`. Sign with your EV code-signing certificate via `signtool sign /fd SHA256 /a /tr http://timestamp.digicert.com /td SHA256 <app>.msix`.
+- **macOS (.app/.dmg)**: Build with `pyinstaller --windowed --name PatentFlow main.py`, create a DMG with `create-dmg`, and sign with `codesign --deep --force --options runtime --sign "Developer ID Application: <Org>" PatentFlow.app`. Notarize using `xcrun notarytool submit` before distributing.
+- **Auto-updates**: Configure an update feed (e.g., S3 bucket or HTTPS endpoint) that hosts versioned installers and a manifest. Use a lightweight updater (PyUpdater or your deployment toolchain) to check the manifest on launch and prompt users before downloading/installing signed packages.
 
 ## Usage
 
@@ -129,11 +136,22 @@ PatentFlow Desktop is a premium patent drafting and analysis application built w
 - **Enable Disambiguation**: POS-based word disambiguation
 - **Cache Settings**: Enable/disable analysis caching
 
+### API Settings
+- **Auth Base URL**: Endpoint for login/refresh flows
+- **Search Base URL**: Endpoint for corpus search and semantic retrieval
+- **Ingestion Status URL**: Endpoint for monitoring queue progress
+- **Review Tools URL**: Endpoint powering automated review helpers
+
 ### Interface Settings
 - **Theme**: Dark/Light/Auto theme selection
 - **Font**: Font family and size configuration
 - **Window State**: Remember window position and size
 - **Auto-save**: Interval for automatic saving
+
+### Offline Drafts
+- **Draft cache**: Enabled by default; stores drafts in `~/.local/share/patentflow` (Linux), `%LOCALAPPDATA%\\patentflow` (Windows), or `~/Library/Application Support/patentflow` (macOS).
+- **Autosave**: Respects the UI auto-save interval; cached drafts reload automatically when the same document checksum is opened.
+- **Cleanup**: Remove cached entries by deleting `drafts.json` in the data directory.
 
 ### Security Settings
 - **Encryption**: Enable local data encryption

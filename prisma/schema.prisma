@@ -19,6 +19,9 @@ model User {
   role        UserRole @default(PARALEGAL)
   firmId      String?
   isActive    Boolean  @default(true)
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret  String?
+  backupCodes      Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
@@ -27,6 +30,9 @@ model User {
   documents   Document[]
   analyses    Analysis[]
   comments    Comment[]
+  patents     Patent[]
+  patentComments PatentComment[]
+  aiAuditLogs    AiAuditLog[]
   sessions    Session[]
   
   @@map("users")
@@ -43,7 +49,8 @@ model Firm {
   // Relations
   users       User[]
   documents   Document[]
-  
+  patents     Patent[]
+
   @@map("firms")
 }
 
@@ -232,7 +239,7 @@ model Comment {
   // Relations
   document      Document @relation(fields: [documentId], references: [id])
   user          User     @relation(fields: [userId], references: [id])
-  
+
   @@map("comments")
 }
 

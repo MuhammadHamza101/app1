@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
+import { authenticator } from 'otplib'
+import crypto from 'crypto'
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -28,6 +30,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const twoFactorSecret = authenticator.generateSecret()
+    const backupCodes = Array.from({ length: 5 }, () =>
+      crypto.randomBytes(4).toString('hex')
+    )
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
@@ -53,6 +60,9 @@ export async function POST(request: NextRequest) {
         role,
         firmId,
         isActive: true,
+        twoFactorEnabled: true,
+        twoFactorSecret,
+        backupCodes: backupCodes.map((code) => ({ code })),
       },
       include: {
         firm: true,
@@ -71,6 +81,8 @@ export async function POST(request: NextRequest) {
         role: user.role,
         firmId: user.firmId,
         firm: user.firm,
+        twoFactorSecret,
+        backupCodes,
       },
     })
   } catch (error) {
