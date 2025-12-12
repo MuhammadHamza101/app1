@@ -243,70 +243,68 @@ model Comment {
   @@map("comments")
 }
 
-// Patent ingestion and normalization
+// Patent intelligence
 model Patent {
-  id                String        @id @default(cuid())
-  title             String
-  abstract          String?
-  claimsText        String?
-  applicationNumber String?
-  publicationNumber String?
-  jurisdiction      String?
-  language          String?
-  sourceFile        String?
-  content           String
-  metadata          Json?
-  classifications   Json?
-  ipcClasses        String?
-  cpcClasses        String?
-  assignee          String?
-  filingDate        DateTime?
-  publicationDate   DateTime?
-  status            PatentStatus  @default(PENDING)
-  firmId            String?
-  createdBy         String
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  id             String          @id @default(cuid())
+  number         String?         @unique
+  title          String
+  abstract       String?
+  claimsText     String?
+  jurisdiction   String?
+  assignee       String?
+  status         PatentStatus    @default(DRAFT)
+  filingDate     DateTime?
+  publicationDate DateTime?
+  technology     String?
+  keywords       String?
+  createdBy      String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
-  firm    Firm? @relation(fields: [firmId], references: [id])
-  creator User  @relation(fields: [createdBy], references: [id])
-
-  comments PatentComment[]
-  aiAudit  AiAuditLog[]
+  // Relations
+  creator        User            @relation(fields: [createdBy], references: [id])
+  ingestions     PatentIngestion[]
+  insights       PatentInsight[]
 
   @@map("patents")
+  @@index([title, technology])
 }
 
-model PatentComment {
-  id        String   @id @default(cuid())
-  patentId  String
-  userId    String
-  role      UserRole
-  threadKey String?
-  content   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model PatentIngestion {
+  id          String                 @id @default(cuid())
+  patentId    String?
+  sourceType  PatentSourceType
+  fileName    String?
+  sourceLink  String?
+  notes       String?
+  status      PatentIngestionStatus  @default(PENDING)
+  metadata    Json?
+  error       String?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
 
-  patent Patent @relation(fields: [patentId], references: [id])
-  user   User   @relation(fields: [userId], references: [id])
+  // Relations
+  patent      Patent?                @relation(fields: [patentId], references: [id])
 
-  @@map("patent_comments")
+  @@map("patent_ingestions")
+  @@index([sourceType, status])
 }
 
-model AiAuditLog {
-  id        String   @id @default(cuid())
-  patentId  String?
-  userId    String?
-  action    String
-  prompt    String
-  response  String
-  provider  String
-  createdAt DateTime @default(now())
+model PatentInsight {
+  id          String         @id @default(cuid())
+  patentId    String
+  summary     String
+  riskScore   Int?
+  highlights  Json?
+  tags        String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
-  patent Patent? @relation(fields: [patentId], references: [id])
-  user   User?   @relation(fields: [userId], references: [id])
+  // Relations
+  patent      Patent         @relation(fields: [patentId], references: [id])
 
-  @@map("ai_audit_logs")
+  @@map("patent_insights")
+  @@index([patentId, createdAt])
 }
 
 // Enums
@@ -420,6 +418,24 @@ enum CommentStatus {
 }
 
 enum PatentStatus {
+  DRAFT
+  READY
+  IN_REVIEW
+  FLAGGED
+  COMPLETE
+}
+
+enum PatentSourceType {
+  PDF
+  DOCX
+  JSON
+  USPTO
+  EPO
+  WIPO
+  MANUAL_ENTRY
+}
+
+enum PatentIngestionStatus {
   PENDING
   PROCESSING
   COMPLETED

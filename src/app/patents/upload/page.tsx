@@ -1,301 +1,223 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Progress } from '@/components/ui/progress'
-import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
 
-interface UploadJobStatus {
-  jobId: string
-  state: string
-  progress: number
-  summary?: string
-  result?: {
-    patentsCreated: number
-    filesProcessed: number
-    languages: Record<string, number>
-    errors: string[]
-  }
-  failedReason?: string | null
-}
-
-const SUPPORTED_TYPES = ['application/pdf', 'application/zip', 'text/csv']
+const defaultStatusMessage = 'Provide a few details and we will ingest the patent for analysis.'
 
 export default function PatentUploadPage() {
-  const [files, setFiles] = useState<File[]>([])
-  const [isDragging, setIsDragging] = useState(false)
-  const [jobStatus, setJobStatus] = useState<UploadJobStatus | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
+  const [status, setStatus] = useState<string>(defaultStatusMessage)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [form, setForm] = useState({
+    title: '',
+    number: '',
+    abstract: '',
+    claimsText: '',
+    jurisdiction: 'US',
+    assignee: 'PatentFlow Labs',
+    technology: '',
+    keywords: '',
+    sourceType: 'MANUAL_ENTRY',
+    status: 'IN_REVIEW',
+  })
 
-  const handleFiles = useCallback((incoming: FileList | File[]) => {
-    setFiles((previous) => [...previous, ...Array.from(incoming)])
-    setError(null)
-  }, [])
+  const handleChange = (field: string, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }))
+  }
 
-  const onDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setIsDragging(false)
-    if (event.dataTransfer.files?.length) {
-      handleFiles(event.dataTransfer.files)
-    }
-  }, [handleFiles])
-
-  const removeFile = useCallback((index: number) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index))
-  }, [])
-
-  const clearAll = useCallback(() => {
-    setFiles([])
-    setJobStatus(null)
-    setError(null)
-  }, [])
-
-  const submit = useCallback(async () => {
-    if (!files.length) {
-      setError('Please add at least one PDF, ZIP, or CSV file to ingest.')
-      return
-    }
-
     setIsSubmitting(true)
-    setError(null)
-    setJobStatus(null)
-
-    const formData = new FormData()
-    files.forEach((file) => formData.append('files', file))
+    setStatus('Submitting patent and creating ingestion record...')
 
     try {
-      const response = await fetch('/api/patents/ingestion', {
+      const response = await fetch('/api/patents', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
       })
 
       if (!response.ok) {
-        const body = await response.json()
-        throw new Error(body.error || 'Unable to queue ingestion job')
+        const data = await response.json()
+        throw new Error(data?.error || 'Failed to create patent')
       }
 
-      const body = await response.json()
-      setJobStatus({
-        jobId: body.jobId,
-        state: 'queued',
-        progress: 0,
-      })
-    } catch (uploadError) {
-      setError((uploadError as Error).message)
+      setStatus('✅ Patent ingested. Redirecting to portfolio...')
+      router.push('/patents')
+    } catch (error) {
+      console.error(error)
+      setStatus('❌ ' + (error as Error).message)
     } finally {
       setIsSubmitting(false)
     }
-  }, [files])
-
-  useEffect(() => {
-    if (!jobStatus?.jobId) return
-
-    const interval = setInterval(async () => {
-      try {
-        const response = await fetch(`/api/patents/ingestion?jobId=${jobStatus.jobId}`)
-        if (!response.ok) return
-        const status = await response.json()
-        const progressValue = typeof status.progress === 'number'
-          ? status.progress
-          : status.progress?.percent ?? 0
-
-        const finished = ['completed', 'failed'].includes(status.state?.toLowerCase?.())
-        setJobStatus({
-          jobId: status.id,
-          state: status.state,
-          progress: progressValue,
-          result: status.result,
-          failedReason: status.failedReason,
-        })
-
-        if (finished) {
-          clearInterval(interval)
-        }
-      } catch (pollError) {
-        console.error('Failed to poll ingestion job', pollError)
-      }
-    }, 1500)
-
-    return () => clearInterval(interval)
-  }, [jobStatus?.jobId])
-
-  const progressValue = jobStatus?.progress ?? 0
-
-  const statusBadge = useMemo(() => {
-    if (!jobStatus) return null
-    const normalized = jobStatus.state?.toLowerCase?.() || 'queued'
-    const variant = normalized === 'failed' ? 'destructive' : normalized === 'completed' ? 'default' : 'secondary'
-    const label = normalized.charAt(0).toUpperCase() + normalized.slice(1)
-    return <Badge variant={variant}>{label}</Badge>
-  }, [jobStatus])
+  }
 
   return (
-    <div className="container mx-auto max-w-5xl py-10 space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold">Patent ingestion</h1>
+    <div className="mx-auto max-w-4xl space-y-6 p-6">
+      <div>
+        <h1 className="text-3xl font-bold">Ingest a patent</h1>
         <p className="text-muted-foreground">
-          Upload PDF, ZIP, or CSV files and process them in the background. We automatically extract text, detect language, and normalize the content into the patent datastore.
+          Seed the workspace with a real application or upload a draft. We capture ingestion metadata and
+          automatically attach baseline insights.
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Upload files</CardTitle>
-          <CardDescription>Drag and drop or browse for supported files.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div
-            onDragOver={(event) => {
-              event.preventDefault()
-              setIsDragging(true)
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={onDrop}
-            className={cn(
-              'flex h-40 w-full cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed transition',
-              isDragging ? 'border-primary bg-primary/5' : 'border-muted'
-            )}
-          >
-            <input
-              id="file-input"
-              type="file"
-              multiple
-              className="hidden"
-              accept={SUPPORTED_TYPES.join(',')}
-              onChange={(event) => event.target.files && handleFiles(event.target.files)}
-            />
-            <Label htmlFor="file-input" className="text-center text-sm text-muted-foreground">
-              Drop files here or <span className="text-primary">browse</span>
-              <div className="mt-1 text-xs">Accepted: PDF, ZIP, CSV</div>
-            </Label>
-          </div>
-
-          {!!files.length && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">Selected files ({files.length})</p>
-                <Button variant="ghost" size="sm" onClick={clearAll}>
-                  Clear all
-                </Button>
-              </div>
-              <div className="grid gap-2">
-                {files.map((file, index) => (
-                  <div
-                    key={`${file.name}-${index}`}
-                    className="flex items-center justify-between rounded-md border bg-card px-3 py-2"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">{file.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {(file.size / 1024 / 1024).toFixed(2)} MB · {file.type || 'Unknown type'}
-                      </p>
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={() => removeFile(index)}>
-                      Remove
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <Alert variant="destructive">
-              <AlertTitle>Upload error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <div className="flex items-center justify-between">
-            <div className="text-xs text-muted-foreground">
-              Background processing is powered by BullMQ + Redis. You can safely navigate away while ingestion runs.
-            </div>
-            <Button onClick={submit} disabled={isSubmitting}>
-              {isSubmitting ? 'Queuing…' : 'Start ingestion'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {jobStatus && (
+      <form onSubmit={handleSubmit} className="space-y-4">
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Ingestion status</CardTitle>
-                <CardDescription>Job ID: {jobStatus.jobId}</CardDescription>
-              </div>
-              {statusBadge}
-            </div>
+            <CardTitle>Core details</CardTitle>
+            <CardDescription>Title, identifiers, and ownership</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span>Progress</span>
-                <span>{progressValue}%</span>
-              </div>
-              <Progress value={progressValue} />
+              <Label htmlFor="title">Title *</Label>
+              <Input
+                id="title"
+                required
+                placeholder="System and method for..."
+                value={form.title}
+                onChange={(e) => handleChange('title', e.target.value)}
+              />
             </div>
-
-            {jobStatus.result && (
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-md border bg-card p-3">
-                  <p className="text-xs text-muted-foreground">Files processed</p>
-                  <p className="text-lg font-semibold">{jobStatus.result.filesProcessed}</p>
-                </div>
-                <div className="rounded-md border bg-card p-3">
-                  <p className="text-xs text-muted-foreground">Patents created</p>
-                  <p className="text-lg font-semibold">{jobStatus.result.patentsCreated}</p>
-                </div>
-                <div className="rounded-md border bg-card p-3 space-y-1">
-                  <p className="text-xs text-muted-foreground">Languages detected</p>
-                  <div className="flex flex-wrap gap-1">
-                    {Object.entries(jobStatus.result.languages || {}).map(([language, count]) => (
-                      <Badge key={language} variant="secondary">
-                        {language} · {count}
-                      </Badge>
-                    ))}
-                    {!Object.keys(jobStatus.result.languages || {}).length && (
-                      <span className="text-xs text-muted-foreground">None detected</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {!!jobStatus?.result?.errors?.length && (
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold">Warnings</h3>
-                <div className="space-y-1 text-sm text-muted-foreground">
-                  {jobStatus.result.errors.map((warning: string, index: number) => (
-                    <div key={`${warning}-${index}`} className="rounded-md bg-muted px-3 py-2">
-                      {warning}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {jobStatus.failedReason && (
-              <Alert variant="destructive">
-                <AlertTitle>Ingestion failed</AlertTitle>
-                <AlertDescription>{jobStatus.failedReason}</AlertDescription>
-              </Alert>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="number">Application / Publication No.</Label>
+              <Input
+                id="number"
+                placeholder="US2024xxxx"
+                value={form.number}
+                onChange={(e) => handleChange('number', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="jurisdiction">Jurisdiction</Label>
+              <Input
+                id="jurisdiction"
+                value={form.jurisdiction}
+                onChange={(e) => handleChange('jurisdiction', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="assignee">Assignee / Client</Label>
+              <Input
+                id="assignee"
+                value={form.assignee}
+                onChange={(e) => handleChange('assignee', e.target.value)}
+              />
+            </div>
           </CardContent>
         </Card>
-      )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Technical context</CardTitle>
+            <CardDescription>Abstract, claims, tech domain, and keywords</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="abstract">Abstract</Label>
+              <Textarea
+                id="abstract"
+                value={form.abstract}
+                onChange={(e) => handleChange('abstract', e.target.value)}
+                placeholder="Summarize the invention in a few sentences."
+                rows={3}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="claimsText">Claims (optional)</Label>
+              <Textarea
+                id="claimsText"
+                value={form.claimsText}
+                onChange={(e) => handleChange('claimsText', e.target.value)}
+                placeholder="Paste representative claims for downstream analysis."
+                rows={4}
+              />
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="technology">Technology domain</Label>
+                <Input
+                  id="technology"
+                  placeholder="AI, biotech, fintech..."
+                  value={form.technology}
+                  onChange={(e) => handleChange('technology', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="keywords">Keywords</Label>
+                <Input
+                  id="keywords"
+                  placeholder="vector search; embeddings; prior art"
+                  value={form.keywords}
+                  onChange={(e) => handleChange('keywords', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="status">Workflow status</Label>
+                <Select value={form.status} onValueChange={(value) => handleChange('status', value)}>
+                  <SelectTrigger id="status">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DRAFT">Draft</SelectItem>
+                    <SelectItem value="READY">Ready</SelectItem>
+                    <SelectItem value="IN_REVIEW">In review</SelectItem>
+                    <SelectItem value="FLAGGED">Flagged</SelectItem>
+                    <SelectItem value="COMPLETE">Complete</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Ingestion metadata</CardTitle>
+            <CardDescription>Track how the record entered the workspace</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="sourceType">Source type</Label>
+              <Select value={form.sourceType} onValueChange={(value) => handleChange('sourceType', value)}>
+                <SelectTrigger id="sourceType">
+                  <SelectValue placeholder="Choose a source" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MANUAL_ENTRY">Manual entry</SelectItem>
+                  <SelectItem value="PDF">PDF upload</SelectItem>
+                  <SelectItem value="DOCX">DOCX upload</SelectItem>
+                  <SelectItem value="USPTO">USPTO</SelectItem>
+                  <SelectItem value="EPO">EPO</SelectItem>
+                  <SelectItem value="WIPO">WIPO</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="number">Quick status</Label>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary">AI-ready</Badge>
+                <Badge variant="outline">Checks: similarity, conflicts, deadlines</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-4">
+          <p className="text-sm text-muted-foreground">{status}</p>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Working...' : 'Ingest patent'}
+          </Button>
+        </div>
+      </form>
     </div>
   )
 }

@@ -144,6 +144,9 @@ async function main() {
   logStep('Seeding default admin user');
   runSync('npm', ['run', 'seed:default'], rootDir, 'Default user seed');
 
+  logStep('Seeding sample patents');
+  runSync('npm', ['run', 'seed:patents'], rootDir, 'Patent seed');
+
   registerShutdown();
 
   startService('Collaboration service', 'npm', ['run', 'dev'], collaborationDir);

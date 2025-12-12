@@ -2,9 +2,9 @@
 
 ## What is working today
 - **Authentication & admin seeding**: Credential-based login via NextAuth + Prisma with bcrypt hashing and a default admin seeded by `npm run seed:default` (or automatically via `npm run one-click-start`). Environment secrets are generated if missing.
-- **Basic web shell**: Next.js app renders a simple dashboard and auth pages; routes exist but are largely placeholders for premium workflows.
+- **Patent workspace foundation**: Prisma models for patents, ingestions, and insights; `/api/patents` supports intake + filtering; `/patents` lists seeded patents with latest insight + ingestion status; `/patents/upload` captures metadata and creates baseline insights.
 - **Collaboration service shell**: Socket.IO service supports joining document rooms, broadcasting edits/cursors/comments, and presence tracking.
-- **Developer ergonomics**: One-click starter installs dependencies, prepares env files, pushes Prisma schema, seeds admin, and boots both services.
+- **Developer ergonomics**: One-click starter installs dependencies, prepares env files, pushes Prisma schema, seeds admin and example patents, and boots both services.
 
 > Evidence references:
 > - Auth configuration and credential checks: `src/lib/auth.ts` lines 1-96.
@@ -12,10 +12,10 @@
 > - Collaboration service features: `mini-services/collaboration-service/index.js` lines 1-104.
 
 ## What is missing to match premium patent tools
-- **Patent content ingestion**: No upload/processing pipeline for PDFs, ZIPs, or structured data; no text/metadata extraction or normalization to a patent model.
-- **Search & retrieval**: No indexed search (keyword or semantic), filtering, or ranking across patent data.
-- **AI-assisted analysis**: No LLM-backed claim review, novelty checks, risk scoring, or summarization workflows.
-- **Review UI/Workflows**: No patent-centric workspace (claims tree, prior art linking, annotations, approvals) beyond the basic dashboard.
+- **Full-fidelity ingestion**: No parsing of PDFs/DOCX/ZIP or automated metadata extraction; no queue/worker for large batches; no storage of raw files.
+- **Search & retrieval depth**: No external index (keyword/semantic), classification filters, or vector search; current filtering is SQLite-only.
+- **AI-assisted analysis**: No LLM-backed claim review, novelty checks, risk scoring, or summarization workflows beyond seeded insights.
+- **Review UI/Workflows**: No patent-centric workspace (claims tree, prior art linking, annotations, approvals) beyond the new list + intake forms.
 - **Analytics & reporting**: No portfolio metrics, alerts, or exportable reports.
 - **Security & compliance hardening**: No MFA, audit trails, data retention policies, or production deployment guidance.
 - **Desktop parity**: Desktop app not integrated with new APIs or offline workflows.

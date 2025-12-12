@@ -13,6 +13,7 @@
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
     "seed:default": "tsx scripts/seed-user.ts",
+    "seed:patents": "tsx scripts/seed-patents.ts",
     "one-click-start": "node scripts/one-click-start.mjs"
   },
   "dependencies": {
