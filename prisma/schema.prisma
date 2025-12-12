@@ -41,6 +41,8 @@ model User {
   ingestionJobs  IngestionJob[]
   analysisRuns   AnalysisRun[]
   sessions       Session[]
+  scheduledReports ScheduledReport[]
+  alertRules        AlertRule[]
 
   @@map("users")
 }
@@ -380,6 +382,7 @@ model Patent {
   priorArt    PriorArtLink[]
   aiAuditLogs AiAuditLog[]
   analysisRuns AnalysisRun[]
+  alertRules  AlertRule[]
 
   @@index([title, technology])
   @@map("patents")
@@ -521,6 +524,91 @@ model AnalysisRun {
   @@map("analysis_runs")
   @@index([patentId, status])
   @@index([promptHash])
+}
+
+model AnalyticsSummary {
+  id             String   @id @default(cuid())
+  bucketDate     DateTime
+  jurisdiction   String?
+  team           String?
+  ipcClass       String?
+  filings        Int
+  allowances     Int
+  allowanceRate  Float
+  averagePendency Float?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([bucketDate, jurisdiction])
+  @@map("analytics_summaries")
+}
+
+model ReviewSlaSnapshot {
+  id              String   @id @default(cuid())
+  bucketDate      DateTime
+  jurisdiction    String?
+  averageTurnaround Float?
+  medianTurnaround  Float?
+  onTimeCount     Int      @default(0)
+  totalReviewed   Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([bucketDate, jurisdiction])
+  @@map("review_sla_snapshots")
+}
+
+model ScheduledReport {
+  id         String       @id @default(cuid())
+  name       String
+  cadence    String
+  recipients String
+  format     ReportFormat @default(PDF)
+  filters    Json?
+  lastRunAt  DateTime?
+  nextRunAt  DateTime?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  createdBy  String?
+
+  user User? @relation(fields: [createdBy], references: [id])
+
+  @@index([nextRunAt])
+  @@map("scheduled_reports")
+}
+
+model AlertRule {
+  id           String      @id @default(cuid())
+  name         String
+  description  String?
+  eventType    AlertEventType
+  threshold    Float?
+  channel      Json
+  isActive     Boolean     @default(true)
+  patentId     String?
+  userId       String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  patent Patent? @relation(fields: [patentId], references: [id])
+  user   User    @relation(fields: [userId], references: [id])
+  notifications AlertNotification[]
+
+  @@index([eventType, isActive])
+  @@map("alert_rules")
+}
+
+model AlertNotification {
+  id          String   @id @default(cuid())
+  ruleId      String
+  message     String
+  deliveredTo Json?
+  createdAt   DateTime @default(now())
+
+  rule AlertRule @relation(fields: [ruleId], references: [id])
+
+  @@index([ruleId, createdAt])
+  @@map("alert_notifications")
 }
 
 // Enums
@@ -702,4 +790,10 @@ enum AssignmentRole {
   REVIEWER
   APPROVER
   COLLABORATOR
+}
+
+enum AlertEventType {
+  MAINTENANCE_WINDOW
+  FLAGGED_RISK
+  SLA_BREACH
 }
