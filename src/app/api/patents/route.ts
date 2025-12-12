@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { z } from 'zod'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { enqueueIngestion } from '@/lib/ingestion-queue'
 
 const createSchema = z.object({
   title: z.string().min(3),
@@ -37,20 +38,20 @@ export async function POST(request: NextRequest) {
         ingestions: {
           create: {
             sourceType: payload.sourceType,
-            status: 'COMPLETED',
-            notes: 'Captured via workspace intake',
+            status: 'PENDING',
+            notes: 'Captured via workspace intake; queued for offline parsing.',
           },
         },
         insights: {
           create: {
-            summary: 'Baseline insight: ready for semantic search and risk scoring.',
+            summary: 'Baseline insight: queued for offline semantic scoring.',
             riskScore: payload.status === 'FLAGGED' ? 70 : payload.status === 'IN_REVIEW' ? 50 : 30,
             highlights: {
               jurisdiction: payload.jurisdiction,
               technology: payload.technology,
               keywords: payload.keywords,
             },
-            tags: 'workspace,intake',
+            tags: 'workspace,intake,queued',
           },
         },
       },
@@ -59,6 +60,14 @@ export async function POST(request: NextRequest) {
         insights: true,
       },
     })
+
+    if (patent.ingestions[0]) {
+      enqueueIngestion({
+        patentId: patent.id,
+        ingestionId: patent.ingestions[0].id,
+        content: `${payload.abstract || ''}\n${payload.claimsText || ''}`,
+      })
+    }
 
     return NextResponse.json({ patent })
   } catch (error) {
