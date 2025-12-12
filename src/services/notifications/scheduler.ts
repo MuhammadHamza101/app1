@@ -17,6 +17,7 @@ export type ScheduledReportJob = {
   subject: string
   html: string
   text?: string
+  attachments?: { filename: string; content: Buffer | string }[]
 }
 
 export type DeadlineAlertJob = {
@@ -47,6 +48,7 @@ if (!globalQueues.alertsWorker) {
           subject: payload.subject,
           html: payload.html,
           text: payload.text,
+          attachments: payload.attachments,
         })
         return
       }
@@ -73,10 +75,23 @@ if (!globalQueues.alertsWorker) {
 type ScheduleOptions = JobsOptions | undefined
 
 export async function scheduleReportEmail(payload: Omit<ScheduledReportJob, 'type'>, options?: ScheduleOptions) {
+  if (connection.status !== 'ready') {
+    await sendEmail(payload)
+    return
+  }
   await alertsQueue.add('scheduled-report', { ...payload, type: 'report' }, options)
 }
 
 export async function scheduleDeadlineAlert(payload: Omit<DeadlineAlertJob, 'type'>, options?: ScheduleOptions) {
+  if (connection.status !== 'ready') {
+    await sendEmail({
+      recipients: payload.recipients,
+      subject: payload.summary,
+      html: payload.summary,
+      text: payload.summary,
+    })
+    return
+  }
   await alertsQueue.add('deadline-alert', { ...payload, type: 'deadline' }, options)
 }
 

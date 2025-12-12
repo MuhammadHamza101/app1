@@ -34,6 +34,7 @@ export async function sendEmail(options: {
   subject: string
   html?: string
   text?: string
+  attachments?: { filename: string; content: Buffer | string }[]
 }) {
   const transporter = globalMailer.mailer || createTransport()
   globalMailer.mailer = transporter
@@ -44,5 +45,6 @@ export async function sendEmail(options: {
     subject: options.subject,
     html: options.html,
     text: options.text,
+    attachments: options.attachments,
   })
 }

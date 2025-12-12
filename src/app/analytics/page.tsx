@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, Tooltip, XAxis, YAxis } from 'recharts'
 import { format } from 'date-fns'
-import { BarChart3, Building2, Filter, Mail, MapPin, Timer, TrendingUp } from 'lucide-react'
+import { BarChart3, Building2, Filter, Gauge, Mail, MapPin, Timer, TrendingUp } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -55,6 +55,11 @@ interface AnalyticsResponse {
   pendency: PendencyMetric
   maintenanceSchedules: MaintenanceSchedule[]
   trends: TrendPoint[]
+  slaMetrics: {
+    averageTurnaround: number
+    medianTurnaround: number
+    onTimeRate: number
+  }
 }
 
 const trendConfig = {
@@ -139,6 +144,7 @@ export default function AnalyticsPage() {
           recipients: ['analytics@patentflow.local'],
           subject: 'Weekly analytics report',
           summary: 'Automated delivery of the most recent analytics snapshot.',
+          filters,
         }),
       })
       setError(null)
@@ -241,7 +247,7 @@ export default function AnalyticsPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -256,6 +262,21 @@ export default function AnalyticsPage() {
                 <span className="font-medium">{item.filings}</span>
               </div>
             ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Gauge className="h-4 w-4" /> Review throughput
+            </CardTitle>
+            <CardDescription>SLA and on-time performance.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-semibold">{data?.slaMetrics.averageTurnaround ?? 0}d</div>
+            <p className="text-sm text-muted-foreground">
+              Median {data?.slaMetrics.medianTurnaround ?? 0}d · On-time {(data?.slaMetrics.onTimeRate ?? 0).toFixed(0)}%
+            </p>
           </CardContent>
         </Card>
 
