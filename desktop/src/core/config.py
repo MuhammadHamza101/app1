@@ -4,6 +4,7 @@ Handles application settings, user preferences, and environment configuration
 """
 
 import os
+import sys
 from pathlib import Path
 from typing import Dict, Any, Optional
 from dataclasses import dataclass, field
@@ -61,6 +62,24 @@ class NetworkConfig:
 
 
 @dataclass
+class ApiConfig:
+    """Endpoints for core platform APIs."""
+
+    auth_base_url: str = "http://localhost:3000/api/auth"
+    search_base_url: str = "http://localhost:3000/api/search"
+    ingestion_status_url: str = "http://localhost:3000/api/ingestion-status"
+    review_tools_url: str = "http://localhost:3000/api/review-tools"
+
+
+@dataclass
+class DraftCacheConfig:
+    """Offline draft cache configuration."""
+
+    enabled: bool = True
+    cache_filename: str = "drafts.json"
+
+
+@dataclass
 class SecurityConfig:
     """Security and privacy configuration"""
     encrypt_local_data: bool = True
@@ -83,6 +102,8 @@ class Config:
         self.analysis = AnalysisConfig()
         self.ui = UIConfig()
         self.network = NetworkConfig()
+        self.api = ApiConfig()
+        self.drafts = DraftCacheConfig()
         self.security = SecurityConfig()
         
         # Load configuration from settings
@@ -137,7 +158,17 @@ class Config:
         # Network settings
         self.network.api_base_url = self.settings.value("network/api_base_url", self.network.api_base_url)
         self.network.timeout_seconds = self.settings.value("network/timeout_seconds", self.network.timeout_seconds, type=int)
-        
+
+        # API endpoints
+        self.api.auth_base_url = self.settings.value("api/auth_base_url", self.api.auth_base_url)
+        self.api.search_base_url = self.settings.value("api/search_base_url", self.api.search_base_url)
+        self.api.ingestion_status_url = self.settings.value("api/ingestion_status_url", self.api.ingestion_status_url)
+        self.api.review_tools_url = self.settings.value("api/review_tools_url", self.api.review_tools_url)
+
+        # Draft cache
+        self.drafts.enabled = self.settings.value("drafts/enabled", self.drafts.enabled, type=bool)
+        self.drafts.cache_filename = self.settings.value("drafts/cache_filename", self.drafts.cache_filename)
+
         # Security settings
         self.security.encrypt_local_data = self.settings.value("security/encrypt_local_data", self.security.encrypt_local_data, type=bool)
         self.security.audit_logging = self.settings.value("security/audit_logging", self.security.audit_logging, type=bool)
@@ -167,7 +198,17 @@ class Config:
         # Network settings
         self.settings.setValue("network/api_base_url", self.network.api_base_url)
         self.settings.setValue("network/timeout_seconds", self.network.timeout_seconds)
-        
+
+        # API endpoints
+        self.settings.setValue("api/auth_base_url", self.api.auth_base_url)
+        self.settings.setValue("api/search_base_url", self.api.search_base_url)
+        self.settings.setValue("api/ingestion_status_url", self.api.ingestion_status_url)
+        self.settings.setValue("api/review_tools_url", self.api.review_tools_url)
+
+        # Draft cache
+        self.settings.setValue("drafts/enabled", self.drafts.enabled)
+        self.settings.setValue("drafts/cache_filename", self.drafts.cache_filename)
+
         # Security settings
         self.settings.setValue("security/encrypt_local_data", self.security.encrypt_local_data)
         self.settings.setValue("security/audit_logging", self.security.audit_logging)
