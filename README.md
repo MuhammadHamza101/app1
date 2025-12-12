@@ -8,38 +8,37 @@
 - 内存: 最少8GB，推荐16GB
 - 存储: 最少10GB可用空间
 
-### 1. 启动Web应用
+### 1. 一键启动（推荐）
 
 ```bash
 # 在项目根目录
-cd /home/z/my-project
-
-# 安装依赖（如果尚未安装）
-npm install
-
-# 启动数据库
-npm run db:push
-
-# 启动开发服务器
-npm run dev
+npm run one-click-start
 ```
 
-Web应用将在 http://localhost:3000 运行
+脚本会自动：
+- 检查 Node.js 和 npm 是否可用
+- 生成 `.env.local`（若不存在）
+- 为 Web 应用和实时协作服务安装依赖
+- 推送 Prisma 数据库 schema
+- 启动 Web 应用（http://localhost:3000）与协作服务（端口 3003）
 
-### 2. 启动实时协作服务
+按 `Ctrl+C` 可同时停止所有服务。
+
+### 2. 手动启动（可选）
 
 ```bash
-# 进入协作服务目录
-cd /home/z/my-project/mini-services/collaboration-service
-
-# 安装依赖
+# 1) 在项目根目录安装依赖并准备数据库
 npm install
+npm run db:push
 
-# 启动服务（后台运行）
+# 2) 启动 Web 应用
+npm run dev
+
+# 3) 启动实时协作服务
+cd mini-services/collaboration-service
+npm install
 npm run dev &
 ```
-
-协作服务将在端口3003运行
 
 ### 3. 启动桌面客户端（可选）
 
@@ -68,6 +67,8 @@ python main.py
 ### Web应用主要功能
 - **主页**: http://localhost:3000
 - **仪表板**: http://localhost:3000/dashboard
+- **专利工作台**: http://localhost:3000/patents（检索、过滤、查看最新洞察与入库信息）
+- **专利入库**: http://localhost:3000/patents/upload（新增专利、记录来源、生成初始洞察）
 - **文档保险库**: http://localhost:3000/vault
 - **分析**: http://localhost:3000/analytics
 - **协作**: http://localhost:3000/collaboration
@@ -76,6 +77,11 @@ python main.py
 - **邮箱**: admin@patentflow.com
 - **密码**: admin123
 - **角色**: 管理员
+
+## 📌 当前进度与路线图
+- 已完成：凭证登录（含默认管理员种子）、基础仪表板外壳、协作服务原型、一键启动脚本、专利工作台（入库 + 检索 + 基线洞察）、示例专利与洞察种子。
+- 未完成：批量/自动化专利解析、语义/向量检索、AI 深度分析、审查与批注工作流、分析报表、安全合规加固、桌面端对齐。
+- 详细状态与执行计划请查看 `docs/status-roadmap.md`。
 
 ## 🔧 功能测试指南
 

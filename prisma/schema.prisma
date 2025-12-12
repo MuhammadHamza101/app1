@@ -236,6 +236,70 @@ model Comment {
   @@map("comments")
 }
 
+// Patent intelligence
+model Patent {
+  id             String          @id @default(cuid())
+  number         String?         @unique
+  title          String
+  abstract       String?
+  claimsText     String?
+  jurisdiction   String?
+  assignee       String?
+  status         PatentStatus    @default(DRAFT)
+  filingDate     DateTime?
+  publicationDate DateTime?
+  technology     String?
+  keywords       String?
+  createdBy      String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relations
+  creator        User            @relation(fields: [createdBy], references: [id])
+  ingestions     PatentIngestion[]
+  insights       PatentInsight[]
+
+  @@map("patents")
+  @@index([title, technology])
+}
+
+model PatentIngestion {
+  id          String                 @id @default(cuid())
+  patentId    String?
+  sourceType  PatentSourceType
+  fileName    String?
+  sourceLink  String?
+  notes       String?
+  status      PatentIngestionStatus  @default(PENDING)
+  metadata    Json?
+  error       String?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  // Relations
+  patent      Patent?                @relation(fields: [patentId], references: [id])
+
+  @@map("patent_ingestions")
+  @@index([sourceType, status])
+}
+
+model PatentInsight {
+  id          String         @id @default(cuid())
+  patentId    String
+  summary     String
+  riskScore   Int?
+  highlights  Json?
+  tags        String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // Relations
+  patent      Patent         @relation(fields: [patentId], references: [id])
+
+  @@map("patent_insights")
+  @@index([patentId, createdAt])
+}
+
 // Enums
 enum UserRole {
   ADMIN
@@ -344,4 +408,29 @@ enum CommentStatus {
   OPEN
   RESOLVED
   CLOSED
+}
+
+enum PatentStatus {
+  DRAFT
+  READY
+  IN_REVIEW
+  FLAGGED
+  COMPLETE
+}
+
+enum PatentSourceType {
+  PDF
+  DOCX
+  JSON
+  USPTO
+  EPO
+  WIPO
+  MANUAL_ENTRY
+}
+
+enum PatentIngestionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }
