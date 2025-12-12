@@ -121,12 +121,11 @@ DATABASE_URL="file:./dev.db"
 NEXTAUTH_SECRET="your-secret-key"
 NEXTAUTH_URL="http://localhost:3000"
 
-# AI服务
-OPENAI_API_KEY="your-openai-key"
-
 # 加密密钥
 ENCRYPTION_KEY="your-32-character-key-here"
 ```
+
+> 所有服务（Web、协作、数据库）均在本地运行，不会将数据发送到外部 API。
 
 ### 数据库初始化
 ```bash

@@ -19,6 +19,7 @@ Follow these steps to run the app locally with the new one-click starter. Manual
    - Install dependencies for the web app and collaboration service
    - Apply the Prisma schema to the local SQLite database
    - Launch the web app on http://localhost:3000 and the collaboration service on port 3003
+   - Keep everything local: no external APIs or cloud calls are used.
 4. Keep the terminal open while you use the app. Press **Ctrl+C** to stop all services together.
 
 ## 🔄 Manual Start (If You Prefer Running Commands Yourself)

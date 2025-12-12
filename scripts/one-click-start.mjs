@@ -77,7 +77,6 @@ function ensureEnvFiles() {
     'DATABASE_URL="file:./dev.db"',
     `NEXTAUTH_SECRET="${secret}"`,
     'NEXTAUTH_URL="http://localhost:3000"',
-    'OPENAI_API_KEY="your-openai-key"',
     `ENCRYPTION_KEY="${secret.slice(0, 32)}"`,
   ].join('\n');
 
