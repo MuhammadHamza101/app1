@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import Link from 'next/link'
 
 const defaultStatusMessage = 'Provide a few details and we will ingest the patent for analysis.'
 
@@ -16,6 +17,10 @@ export default function PatentUploadPage() {
   const router = useRouter()
   const [status, setStatus] = useState<string>(defaultStatusMessage)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [jobId, setJobId] = useState<string | null>(null)
+  const [jobStatus, setJobStatus] = useState<string>('')
+  const [jobProgress, setJobProgress] = useState<any>(null)
+  const [files, setFiles] = useState<FileList | null>(null)
   const [form, setForm] = useState({
     title: '',
     number: '',
@@ -28,6 +33,30 @@ export default function PatentUploadPage() {
     sourceType: 'MANUAL_ENTRY',
     status: 'IN_REVIEW',
   })
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout | undefined
+    const pollJob = async () => {
+      if (!jobId) return
+      const response = await fetch(`/api/patents/ingestion?jobId=${jobId}`)
+      if (!response.ok) return
+      const data = await response.json()
+      setJobStatus(data.status || data.queueState || '')
+      setJobProgress(data.progress)
+      if (data.status === 'COMPLETED' || data.status === 'FAILED') {
+        clearInterval(interval)
+      }
+    }
+
+    if (jobId) {
+      pollJob()
+      interval = setInterval(pollJob, 1500)
+    }
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [jobId])
 
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -60,6 +89,41 @@ export default function PatentUploadPage() {
     }
   }
 
+  const handleFileSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!files?.length) {
+      setStatus('Please select at least one file to ingest.')
+      return
+    }
+
+    setIsSubmitting(true)
+    setStatus('Queuing background ingestion...')
+
+    try {
+      const formData = new FormData()
+      Array.from(files).forEach((file) => formData.append('files', file))
+
+      const response = await fetch('/api/patents/ingestion', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data?.error || 'Failed to queue ingestion job')
+      }
+
+      const data = await response.json()
+      setJobId(data.jobId)
+      setJobStatus('QUEUED')
+      setStatus(`Queued ${data.files} file(s) totaling ${(data.totalSize / 1024 / 1024).toFixed(1)} MB.`)
+    } catch (error) {
+      setStatus('❌ ' + (error as Error).message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
       <div>
@@ -68,7 +132,50 @@ export default function PatentUploadPage() {
           Seed the workspace with a real application or upload a draft. We capture ingestion metadata and
           automatically attach baseline insights.
         </p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Need to monitor jobs? Visit <Link className="font-medium underline" href="/patents/uploads">Upload queue</Link>.
+        </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Background file ingestion</CardTitle>
+          <CardDescription>Upload PDF, DOCX, or ZIP bundles and track status without refreshing.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleFileSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="file-upload">Original files</Label>
+              <Input
+                id="file-upload"
+                type="file"
+                accept=".pdf,.docx,.zip,.csv,application/pdf,application/zip,text/csv"
+                multiple
+                onChange={(event) => setFiles(event.target.files)}
+              />
+              <p className="text-sm text-muted-foreground">
+                Files are checksummed, versioned, and processed in the background. You can safely navigate away.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Queuing...' : 'Upload & enqueue'}
+              </Button>
+              {jobId ? (
+                <Badge variant="secondary">Job {jobId.slice(0, 8)} • {jobStatus}</Badge>
+              ) : null}
+              {jobProgress?.percent !== undefined ? (
+                <Badge variant="outline">{jobProgress.percent}%</Badge>
+              ) : null}
+            </div>
+            {jobProgress?.currentFile ? (
+              <p className="text-sm text-muted-foreground">
+                Processing {jobProgress.currentFile} ({jobProgress.processed || 0}/{jobProgress.total || 0})
+              </p>
+            ) : null}
+          </form>
+        </CardContent>
+      </Card>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <Card>
