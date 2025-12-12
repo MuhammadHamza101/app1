@@ -60,6 +60,12 @@ export default async function PatentDetailPage({
               {code}
             </Badge>
           ))}
+          <a
+            href={`/patents/${patent.id}/review`}
+            className="ml-auto text-sm font-medium text-primary underline underline-offset-4"
+          >
+            Open review workspace
+          </a>
         </div>
       </div>
 

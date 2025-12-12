@@ -28,6 +28,8 @@ model User {
   analyses    Analysis[]
   comments    Comment[]
   patents     Patent[]
+  patentComments PatentComment[]
+  aiAuditLogs    AiAuditLog[]
   sessions    Session[]
   
   @@map("users")
@@ -266,7 +268,42 @@ model Patent {
   firm    Firm? @relation(fields: [firmId], references: [id])
   creator User  @relation(fields: [createdBy], references: [id])
 
+  comments PatentComment[]
+  aiAudit  AiAuditLog[]
+
   @@map("patents")
+}
+
+model PatentComment {
+  id        String   @id @default(cuid())
+  patentId  String
+  userId    String
+  role      UserRole
+  threadKey String?
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patent Patent @relation(fields: [patentId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@map("patent_comments")
+}
+
+model AiAuditLog {
+  id        String   @id @default(cuid())
+  patentId  String?
+  userId    String?
+  action    String
+  prompt    String
+  response  String
+  provider  String
+  createdAt DateTime @default(now())
+
+  patent Patent? @relation(fields: [patentId], references: [id])
+  user   User?   @relation(fields: [userId], references: [id])
+
+  @@map("ai_audit_logs")
 }
 
 // Enums
