@@ -10,6 +10,26 @@ export interface SearchFilters {
   endDate?: string
 }
 
+export interface SearchIndexField {
+  name: string
+  type: 'text' | 'string' | 'string[]' | 'date'
+  description: string
+  searchable?: boolean
+  filterable?: boolean
+  sortable?: boolean
+  vectorized?: boolean
+}
+
+export interface SearchIndexSchema {
+  indexName: string
+  engine: string
+  searchable: string[]
+  filterable: string[]
+  sortable: string[]
+  vectorDimensions: number
+  fields: SearchIndexField[]
+}
+
 export interface PatentSearchResult {
   patent: Patent
   highlights: {
@@ -25,24 +45,40 @@ export interface PatentSearchResult {
 
 export interface SearchResponse {
   provider: string
-  schema: typeof patentSearchSchema
+  schema: SearchIndexSchema
   total: number
   page: number
   pageSize: number
   results: PatentSearchResult[]
 }
 
-export const patentSearchSchema = {
+export const patentSearchSchema: SearchIndexSchema = {
   indexName: 'patents',
   engine: process.env.SEARCH_ENGINE || 'meilisearch',
+  searchable: ['title', 'abstract', 'claimsText', 'classifications'],
+  filterable: ['ipcClasses', 'cpcClasses', 'assignee', 'filingDate', 'publicationDate'],
+  sortable: ['filingDate', 'publicationDate', 'updatedAt'],
+  vectorDimensions: Number(process.env.SEARCH_VECTOR_DIMENSIONS || (process.env.OPENAI_API_KEY ? 1536 : 64)),
   fields: [
-    { name: 'title', type: 'text', description: 'Patent title' },
-    { name: 'abstract', type: 'text', description: 'Abstract and summary' },
-    { name: 'claimsText', type: 'text', description: 'Flattened claims text' },
-    { name: 'classifications', type: 'string[]', description: 'IPC/CPC codes' },
-    { name: 'assignee', type: 'string', description: 'Assignee or applicant' },
-    { name: 'filingDate', type: 'date', description: 'Filing date' },
-    { name: 'publicationDate', type: 'date', description: 'Publication date' },
+    { name: 'title', type: 'text', description: 'Patent title', searchable: true, vectorized: true },
+    { name: 'abstract', type: 'text', description: 'Abstract and summary', searchable: true, vectorized: true },
+    {
+      name: 'claimsText',
+      type: 'text',
+      description: 'Flattened claims text',
+      searchable: true,
+      vectorized: true,
+    },
+    {
+      name: 'classifications',
+      type: 'string[]',
+      description: 'IPC/CPC codes (normalized list)',
+      searchable: true,
+      filterable: true,
+    },
+    { name: 'assignee', type: 'string', description: 'Assignee or applicant', filterable: true },
+    { name: 'filingDate', type: 'date', description: 'Filing date', filterable: true, sortable: true },
+    { name: 'publicationDate', type: 'date', description: 'Publication date', filterable: true, sortable: true },
   ],
 }
 
@@ -127,6 +163,19 @@ function lexicalScore(text: string, tokens: string[]) {
   return counts.reduce((sum, count) => sum + count / maxCount, 0) / tokens.length
 }
 
+function weightedLexicalScore(
+  buckets: Array<{ text: string | null | undefined; weight: number }>,
+  tokens: string[]
+) {
+  const totalWeight = buckets.reduce((sum, bucket) => sum + bucket.weight, 0) || 1
+  const contributions = buckets.map((bucket) => {
+    if (!bucket.text) return 0
+    return (lexicalScore(bucket.text, tokens) * bucket.weight) / totalWeight
+  })
+
+  return contributions.reduce((sum, score) => sum + score, 0)
+}
+
 function escapeHtml(text: string) {
   return text
     .replace(/&/g, '&amp;')
@@ -174,6 +223,42 @@ function buildWhere(filters: SearchFilters): Prisma.PatentWhereInput {
   return where
 }
 
+export function buildPatentDocument(patent: Patent) {
+  return {
+    id: patent.id,
+    title: patent.title,
+    abstract: patent.abstract,
+    claimsText: patent.claimsText,
+    classifications: [patent.ipcClasses, patent.cpcClasses]
+      .filter(Boolean)
+      .join(',')
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean),
+    ipcClasses: patent.ipcClasses,
+    cpcClasses: patent.cpcClasses,
+    assignee: patent.assignee,
+    filingDate: patent.filingDate,
+    publicationDate: patent.publicationDate,
+    updatedAt: patent.updatedAt,
+  }
+}
+
+export function buildIndexSettings(schema: SearchIndexSchema = patentSearchSchema) {
+  return {
+    indexName: schema.indexName,
+    engine: schema.engine,
+    searchableAttributes: schema.searchable,
+    filterableAttributes: schema.filterable,
+    sortableAttributes: schema.sortable,
+    vector: {
+      size: schema.vectorDimensions,
+      distance: 'cosine',
+      provider: process.env.OPENAI_API_KEY ? 'openai' : 'local-simhash',
+    },
+  }
+}
+
 export class HybridSearchService {
   private embeddingProvider: EmbeddingProvider
 
@@ -199,13 +284,15 @@ export class HybridSearchService {
 
     const scored = await Promise.all(
       candidates.map(async (patent) => {
-        const documentText = [
-          patent.title,
-          patent.abstract,
-          patent.claimsText,
-          patent.ipcClasses,
-          patent.cpcClasses,
+        const buckets = [
+          { text: patent.title, weight: 3 },
+          { text: patent.abstract, weight: 2 },
+          { text: patent.claimsText, weight: 2 },
+          { text: patent.ipcClasses, weight: 1 },
+          { text: patent.cpcClasses, weight: 1 },
         ]
+        const documentText = buckets
+          .map((bucket) => bucket.text)
           .filter(Boolean)
           .join('\n')
 
@@ -217,7 +304,7 @@ export class HybridSearchService {
           console.warn('Semantic scoring failed, continuing with lexical score', error)
         }
 
-        const lexical = lexicalScore(documentText, tokens)
+        const lexical = weightedLexicalScore(buckets, tokens)
         const score = semanticScore * 0.6 + lexical * 0.4
 
         const highlights = {
