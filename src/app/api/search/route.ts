@@ -1,12 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { z } from 'zod'
 import { authOptions } from '@/lib/auth'
-import { db } from '@/lib/db'
+import { HybridSearchService } from '@/services/search'
 
-function scorePatent(query: string, text: string) {
-  const normalizedQ = query.toLowerCase().split(/\s+/)
-  const haystack = text.toLowerCase()
-  return normalizedQ.reduce((score, term) => (haystack.includes(term) ? score + 1 : score), 0)
+const searchSchema = z.object({
+  query: z.string().default(''),
+  ipc: z.array(z.string()).optional(),
+  cpc: z.array(z.string()).optional(),
+  jurisdictions: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
+  assignee: z.string().optional(),
+  technology: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  page: z.number().int().min(1).max(50).default(1),
+  pageSize: z.number().int().min(1).max(50).default(10),
+  semantic: z.boolean().optional(),
+})
+
+export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions)
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  try {
+    const body = await request.json()
+    const payload = searchSchema.parse(body)
+    const service = new HybridSearchService()
+
+    const response = await service.search(
+      payload.query,
+      {
+        ipc: payload.ipc,
+        cpc: payload.cpc,
+        assignee: payload.assignee,
+        technology: payload.technology,
+        jurisdictions: payload.jurisdictions,
+        tags: payload.tags,
+        startDate: payload.startDate,
+        endDate: payload.endDate,
+        createdBy: session.user.role === 'ADMIN' ? undefined : session.user.id,
+      },
+      payload.page,
+      payload.pageSize,
+      { semantic: payload.semantic }
+    )
+
+    return NextResponse.json(response)
+  } catch (error) {
+    console.error('Hybrid search failed', error)
+    return NextResponse.json({ error: 'Search failed' }, { status: 400 })
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -16,28 +62,24 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url)
-  const q = (searchParams.get('q') || '').trim()
-  if (!q) {
-    return NextResponse.json({ results: [] })
-  }
+  const q = searchParams.get('q') || ''
+  const service = new HybridSearchService()
 
-  const patents = await db.patent.findMany({
-    where: session.user.role === 'ADMIN' ? {} : { createdBy: session.user.id },
-    include: { insights: { orderBy: { createdAt: 'desc' }, take: 1 } },
-  })
+  const response = await service.search(
+    q,
+    {
+      ipc: searchParams.getAll('ipc'),
+      cpc: searchParams.getAll('cpc'),
+      assignee: searchParams.get('assignee') || undefined,
+      jurisdictions: searchParams.getAll('jurisdiction'),
+      startDate: searchParams.get('startDate') || undefined,
+      endDate: searchParams.get('endDate') || undefined,
+      createdBy: session.user.role === 'ADMIN' ? undefined : session.user.id,
+    },
+    Number(searchParams.get('page') || '1'),
+    Number(searchParams.get('pageSize') || '10'),
+    { semantic: searchParams.get('semantic') !== 'false' }
+  )
 
-  const ranked = patents
-    .map((patent) => {
-      const text = `${patent.title} ${patent.abstract || ''} ${patent.claimsText || ''} ${patent.technology || ''} ${patent.assignee || ''}`
-      return { patent, score: scorePatent(q, text) }
-    })
-    .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 25)
-
-  return NextResponse.json({
-    query: q,
-    count: ranked.length,
-    results: ranked.map(({ patent, score }) => ({ patent, score })),
-  })
+  return NextResponse.json(response)
 }

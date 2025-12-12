@@ -12,44 +12,44 @@ datasource db {
 
 // User management and authentication
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  name        String?
-  password    String?  // For credentials provider
-  role        UserRole @default(PARALEGAL)
-  firmId      String?
-  isActive    Boolean  @default(true)
-  twoFactorEnabled Boolean @default(false)
+  id               String   @id @default(cuid())
+  email            String   @unique
+  name             String?
+  password         String? // For credentials provider
+  role             UserRole @default(PARALEGAL)
+  firmId           String?
+  isActive         Boolean  @default(true)
+  twoFactorEnabled Boolean  @default(false)
   twoFactorSecret  String?
   backupCodes      Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
   // Relations
-  firm        Firm?    @relation(fields: [firmId], references: [id])
-  documents   Document[]
-  analyses    Analysis[]
-  comments    Comment[]
-  patents     Patent[]
+  firm           Firm?           @relation(fields: [firmId], references: [id])
+  documents      Document[]
+  analyses       Analysis[]
+  comments       Comment[]
+  patents        Patent[]
   patentComments PatentComment[]
   aiAuditLogs    AiAuditLog[]
-  sessions    Session[]
-  
+  sessions       Session[]
+
   @@map("users")
 }
 
 model Firm {
-  id          String   @id @default(cuid())
-  name        String
-  domain      String?  @unique
-  settings    Json?    // Firm-specific settings
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  id        String   @id @default(cuid())
+  name      String
+  domain    String?  @unique
+  settings  Json? // Firm-specific settings
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  users       User[]
-  documents   Document[]
-  patents     Patent[]
+  users     User[]
+  documents Document[]
+  patents   Patent[]
 
   @@map("firms")
 }
@@ -61,10 +61,10 @@ model Session {
   refreshToken String?  @unique
   expiresAt    DateTime
   createdAt    DateTime @default(now())
-  
+
   // Relations
-  user         User     @relation(fields: [userId], references: [id])
-  
+  user User @relation(fields: [userId], references: [id])
+
   @@map("sessions")
 }
 
@@ -72,25 +72,25 @@ model Session {
 model Document {
   id            String         @id @default(cuid())
   title         String
-  originalPath  String?        // Original file path
-  checksum      String?        // File integrity checksum
+  originalPath  String? // Original file path
+  checksum      String? // File integrity checksum
   version       Int            @default(1)
   status        DocumentStatus @default(DRAFT)
-  metadata      Json?          // Document metadata
-  encryptedData String?        // Encrypted document content
+  metadata      Json? // Document metadata
+  encryptedData String? // Encrypted document content
   firmId        String?
   createdBy     String
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
-  
+
   // Relations
-  firm          Firm?          @relation(fields: [firmId], references: [id])
-  creator       User           @relation(fields: [createdBy], references: [id])
-  snapshots     DocumentSnapshot[]
-  analyses      Analysis[]
-  comments      Comment[]
-  reports       Report[]
-  
+  firm      Firm?              @relation(fields: [firmId], references: [id])
+  creator   User               @relation(fields: [createdBy], references: [id])
+  snapshots DocumentSnapshot[]
+  analyses  Analysis[]
+  comments  Comment[]
+  reports   Report[]
+
   @@map("documents")
 }
 
@@ -98,213 +98,283 @@ model DocumentSnapshot {
   id              String   @id @default(cuid())
   documentId      String
   version         Int
-  content         String   // Raw text content
-  structuredData  Json     // Parsed sections, claims, figures
-  mappingMetadata Json     // Position mapping for Word navigation
+  content         String // Raw text content
+  structuredData  Json // Parsed sections, claims, figures
+  mappingMetadata Json // Position mapping for Word navigation
   checksum        String
   createdAt       DateTime @default(now())
-  
+
   // Relations
-  document        Document @relation(fields: [documentId], references: [id])
-  analyses        Analysis[]
-  findings        Finding[]
-  anchors         Anchor[]
-  
+  document Document   @relation(fields: [documentId], references: [id])
+  analyses Analysis[]
+  findings Finding[]
+  anchors  Anchor[]
+
   @@unique([documentId, version])
   @@map("document_snapshots")
 }
 
 // Analysis results and findings
 model Analysis {
-  id            String         @id @default(cuid())
-  documentId    String
-  snapshotId    String
-  userId        String
-  type          AnalysisType
-  status        AnalysisStatus @default(PENDING)
-  config        Json?          // Analysis configuration
-  results       Json?          // Analysis results
-  metrics       Json?          // Performance metrics
-  startedAt     DateTime       @default(now())
-  completedAt   DateTime?
-  
+  id          String         @id @default(cuid())
+  documentId  String
+  snapshotId  String
+  userId      String
+  type        AnalysisType
+  status      AnalysisStatus @default(PENDING)
+  config      Json? // Analysis configuration
+  results     Json? // Analysis results
+  metrics     Json? // Performance metrics
+  startedAt   DateTime       @default(now())
+  completedAt DateTime?
+
   // Relations
-  document      Document @relation(fields: [documentId], references: [id])
-  snapshot      DocumentSnapshot @relation(fields: [snapshotId], references: [id])
-  user          User     @relation(fields: [userId], references: [id])
-  findings      Finding[]
-  reports       Report[]
-  
+  document Document         @relation(fields: [documentId], references: [id])
+  snapshot DocumentSnapshot @relation(fields: [snapshotId], references: [id])
+  user     User             @relation(fields: [userId], references: [id])
+  findings Finding[]
+  reports  Report[]
+
   @@map("analyses")
 }
 
 model Finding {
-  id            String       @id @default(cuid())
-  analysisId    String
-  snapshotId    String
-  ruleId        String?
-  type          FindingType
-  severity      Severity
-  title         String
-  description   String
-  suggestion    String?
-  context       String        // Surrounding text
-  anchorId      String?       // Link to text position
-  metadata      Json?         // Additional finding data
-  confidence    Float?        // Confidence score 0-1
-  status        FindingStatus @default(OPEN)
-  createdAt     DateTime     @default(now())
-  
+  id          String        @id @default(cuid())
+  analysisId  String
+  snapshotId  String
+  ruleId      String?
+  type        FindingType
+  severity    Severity
+  title       String
+  description String
+  suggestion  String?
+  context     String // Surrounding text
+  anchorId    String? // Link to text position
+  metadata    Json? // Additional finding data
+  confidence  Float? // Confidence score 0-1
+  status      FindingStatus @default(OPEN)
+  createdAt   DateTime      @default(now())
+
   // Relations
-  analysis      Analysis       @relation(fields: [analysisId], references: [id])
-  snapshot      DocumentSnapshot @relation(fields: [snapshotId], references: [id])
-  anchor        Anchor?        @relation(fields: [anchorId], references: [id])
-  rule          Rule?          @relation(fields: [ruleId], references: [id])
-  
+  analysis Analysis         @relation(fields: [analysisId], references: [id])
+  snapshot DocumentSnapshot @relation(fields: [snapshotId], references: [id])
+  anchor   Anchor?          @relation(fields: [anchorId], references: [id])
+  rule     Rule?            @relation(fields: [ruleId], references: [id])
+
   @@map("findings")
 }
 
 model Anchor {
-  id            String   @id @default(cuid())
-  snapshotId    String
+  id             String   @id @default(cuid())
+  snapshotId     String
   paragraphIndex Int
-  startOffset   Int
-  endOffset     Int
-  text          String
-  contextHash   String?  // For change detection
-  metadata      Json?    // Position-specific data
-  createdAt     DateTime @default(now())
-  
+  startOffset    Int
+  endOffset      Int
+  text           String
+  contextHash    String? // For change detection
+  metadata       Json? // Position-specific data
+  createdAt      DateTime @default(now())
+
   // Relations
-  snapshot      DocumentSnapshot @relation(fields: [snapshotId], references: [id])
-  findings      Finding[]
-  
+  snapshot DocumentSnapshot @relation(fields: [snapshotId], references: [id])
+  findings Finding[]
+
   @@map("anchors")
 }
 
 // Rule engine
 model Rule {
-  id            String     @id @default(cuid())
-  name          String     @unique
-  description   String
-  category      RuleCategory
-  type          RuleType
-  config        Json       // Rule configuration
-  enabled       Boolean    @default(true)
-  version       String     @default("1.0")
-  createdBy     String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String
+  category    RuleCategory
+  type        RuleType
+  config      Json // Rule configuration
+  enabled     Boolean      @default(true)
+  version     String       @default("1.0")
+  createdBy   String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
   // Relations
-  findings      Finding[]
-  
+  findings Finding[]
+
   @@map("rules")
 }
 
 // Reporting and collaboration
 model Report {
-  id            String       @id @default(cuid())
-  documentId    String
-  analysisId    String?
-  userId        String
-  type          ReportType
-  title         String
-  content       String?      // Report content (HTML/PDF)
-  data          Json         // Report data and metadata
-  format        ReportFormat @default(HTML)
-  status        ReportStatus @default(DRAFT)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  
+  id         String       @id @default(cuid())
+  documentId String
+  analysisId String?
+  userId     String
+  type       ReportType
+  title      String
+  content    String? // Report content (HTML/PDF)
+  data       Json // Report data and metadata
+  format     ReportFormat @default(HTML)
+  status     ReportStatus @default(DRAFT)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
   // Relations
-  document      Document @relation(fields: [documentId], references: [id])
-  analysis      Analysis? @relation(fields: [analysisId], references: [id])
-  
+  document Document  @relation(fields: [documentId], references: [id])
+  analysis Analysis? @relation(fields: [analysisId], references: [id])
+
   @@map("reports")
 }
 
 model Comment {
-  id            String       @id @default(cuid())
-  documentId    String
-  userId        String
-  anchorId      String?
-  content       String
-  type          CommentType  @default(GENERAL)
-  status        CommentStatus @default(OPEN)
-  metadata      Json?        // Comment metadata
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  
+  id         String        @id @default(cuid())
+  documentId String
+  userId     String
+  anchorId   String?
+  content    String
+  type       CommentType   @default(GENERAL)
+  status     CommentStatus @default(OPEN)
+  metadata   Json? // Comment metadata
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
   // Relations
-  document      Document @relation(fields: [documentId], references: [id])
-  user          User     @relation(fields: [userId], references: [id])
+  document Document @relation(fields: [documentId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
 
   @@map("comments")
 }
 
 // Patent intelligence
 model Patent {
-  id             String          @id @default(cuid())
-  number         String?         @unique
-  title          String
-  abstract       String?
-  claimsText     String?
-  jurisdiction   String?
-  assignee       String?
-  status         PatentStatus    @default(DRAFT)
-  filingDate     DateTime?
-  publicationDate DateTime?
-  technology     String?
-  keywords       String?
-  createdBy      String
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id                String       @id @default(cuid())
+  number            String?      @unique
+  applicationNumber String?
+  publicationNumber String?
+  title             String
+  abstract          String?
+  claimsText        String?
+  content           String?
+  jurisdiction      String?
+  assignee          String?
+  ipcClasses        String?
+  cpcClasses        String?
+  language          String?
+  sourceFile        String?
+  status            PatentStatus @default(DRAFT)
+  filingDate        DateTime?
+  publicationDate   DateTime?
+  technology        String?
+  keywords          String?
+  createdBy         String
+  firmId            String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
   // Relations
-  creator        User            @relation(fields: [createdBy], references: [id])
-  ingestions     PatentIngestion[]
-  insights       PatentInsight[]
+  creator    User              @relation(fields: [createdBy], references: [id])
+  firm       Firm?             @relation(fields: [firmId], references: [id])
+  ingestions PatentIngestion[]
+  insights   PatentInsight[]
+  embeddings PatentEmbedding[]
+  tags       PatentTag[]
+  comments   PatentComment[]
 
-  @@map("patents")
   @@index([title, technology])
+  @@map("patents")
+}
+
+model PatentEmbedding {
+  id          String   @id @default(cuid())
+  patentId    String
+  provider    String
+  dimensions  Int
+  contentHash String
+  embedding   Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  patent Patent @relation(fields: [patentId], references: [id])
+
+  @@unique([patentId, provider])
+  @@index([provider, dimensions])
+  @@map("patent_embeddings")
+}
+
+model PatentTag {
+  id        String   @id @default(cuid())
+  patentId  String
+  tag       String
+  source    String? // system, ingestion, manual
+  createdAt DateTime @default(now())
+
+  patent Patent @relation(fields: [patentId], references: [id])
+
+  @@unique([patentId, tag])
+  @@index([tag])
+  @@map("patent_tags")
 }
 
 model PatentIngestion {
-  id          String                 @id @default(cuid())
-  patentId    String?
-  sourceType  PatentSourceType
-  fileName    String?
-  sourceLink  String?
-  notes       String?
-  status      PatentIngestionStatus  @default(PENDING)
-  metadata    Json?
-  error       String?
-  createdAt   DateTime               @default(now())
-  updatedAt   DateTime               @updatedAt
+  id         String                @id @default(cuid())
+  patentId   String?
+  sourceType PatentSourceType
+  fileName   String?
+  sourceLink String?
+  notes      String?
+  status     PatentIngestionStatus @default(PENDING)
+  metadata   Json?
+  error      String?
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
 
   // Relations
-  patent      Patent?                @relation(fields: [patentId], references: [id])
+  patent Patent? @relation(fields: [patentId], references: [id])
 
-  @@map("patent_ingestions")
   @@index([sourceType, status])
+  @@map("patent_ingestions")
 }
 
 model PatentInsight {
-  id          String         @id @default(cuid())
-  patentId    String
-  summary     String
-  riskScore   Int?
-  highlights  Json?
-  tags        String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id         String   @id @default(cuid())
+  patentId   String
+  summary    String
+  riskScore  Int?
+  highlights Json?
+  tags       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   // Relations
-  patent      Patent         @relation(fields: [patentId], references: [id])
+  patent Patent @relation(fields: [patentId], references: [id])
 
-  @@map("patent_insights")
   @@index([patentId, createdAt])
+  @@map("patent_insights")
+}
+
+model PatentComment {
+  id        String   @id @default(cuid())
+  patentId  String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+
+  patent Patent @relation(fields: [patentId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([patentId])
+  @@map("patent_comments")
+}
+
+model AiAuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@map("ai_audit_logs")
 }
 
 // Enums
