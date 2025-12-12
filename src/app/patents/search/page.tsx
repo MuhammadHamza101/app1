@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Search, SlidersHorizontal } from 'lucide-react'
+import { Info, Search, SlidersHorizontal } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -40,7 +40,14 @@ interface SearchResponse {
   results: PatentSearchResult[]
   total: number
   provider: string
-  schema: { fields: { name: string; description: string }[] }
+  schema: {
+    engine: string
+    indexName: string
+    searchable: string[]
+    filterable: string[]
+    vectorDimensions: number
+    fields: { name: string; description: string }[]
+  }
   page: number
   pageSize: number
 }
@@ -61,6 +68,8 @@ export default function PatentSearchPage() {
   const [toDate, setToDate] = useState('')
   const [results, setResults] = useState<PatentSearchResult[]>([])
   const [meta, setMeta] = useState<{ total: number; provider: string; page: number; pageSize: number } | null>(null)
+  const [schema, setSchema] = useState<SearchResponse['schema'] | null>(null)
+  const [showFilters, setShowFilters] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -105,6 +114,7 @@ export default function PatentSearchPage() {
         page: body.page,
         pageSize: body.pageSize,
       })
+      setSchema(body.schema)
     } catch (searchError) {
       setError((searchError as Error).message)
     } finally {
@@ -122,19 +132,20 @@ export default function PatentSearchPage() {
         <div className="space-y-2">
           <h1 className="text-3xl font-bold">Patent semantic search</h1>
           <p className="text-muted-foreground max-w-3xl">
-            Hybrid relevance combines Meilisearch-style lexical scoring with OpenAI embedding similarity. Filter by IPC/CPC,
-            assignee, and filing dates to zero in on the right authority.
+            Blend embeddings with lexical signals across title, abstract, claims, and classifications. Filter by IPC/CPC,
+            assignee, or filing window to zero in on the right authority.
           </p>
-          {meta && (
-            <div className="text-sm text-muted-foreground space-x-2">
-              <Badge variant="secondary">Engine: {meta.provider}</Badge>
-              <Badge variant="outline">Results: {meta.total}</Badge>
-            </div>
-          )}
+          <div className="flex flex-wrap gap-2 text-sm text-muted-foreground items-center">
+            <Badge variant="outline">Hybrid rerank</Badge>
+            <Badge variant="outline">OpenAI / Local fallback</Badge>
+            {meta?.total && <Badge variant="outline">Results: {meta.total}</Badge>}
+          </div>
         </div>
-        <Badge variant="outline" className="flex items-center gap-2">
-          <SlidersHorizontal className="h-4 w-4" /> Index schema defined
-        </Badge>
+        <div className="flex flex-col items-end gap-2 text-sm text-muted-foreground">
+          <Badge variant="outline">/api/search</Badge>
+          {schema && <Badge variant="secondary">Engine: {schema.engine}</Badge>}
+          {schema && <Badge variant="outline">Index: {schema.indexName}</Badge>}
+        </div>
       </div>
 
       <Card>
@@ -145,7 +156,7 @@ export default function PatentSearchPage() {
         <CardContent>
           <form onSubmit={handleSearch} className="space-y-4">
             <div className="grid gap-4 lg:grid-cols-4">
-              <div className="lg:col-span-2 space-y-2">
+              <div className="lg:col-span-3 space-y-2">
                 <Label htmlFor="query">Query</Label>
                 <Textarea
                   id="query"
@@ -156,44 +167,58 @@ export default function PatentSearchPage() {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="ipc">IPC codes</Label>
-                <Input
-                  id="ipc"
-                  value={ipc}
-                  onChange={(event) => setIpc(event.target.value)}
-                  placeholder="H04W, G06F..."
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cpc">CPC codes</Label>
-                <Input
-                  id="cpc"
-                  value={cpc}
-                  onChange={(event) => setCpc(event.target.value)}
-                  placeholder="H04W72/00, H01Q1/28"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="assignee">Assignee</Label>
-                <Input
-                  id="assignee"
-                  value={assignee}
-                  onChange={(event) => setAssignee(event.target.value)}
-                  placeholder="Apple, Siemens, ..."
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-2">
-                  <Label htmlFor="from">From</Label>
-                  <Input id="from" type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />
+              <div className="flex items-center justify-between lg:col-span-1 rounded-lg border p-3 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  <span>Filters</span>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="to">To</Label>
-                  <Input id="to" type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} />
-                </div>
+                <Button variant="ghost" size="sm" type="button" onClick={() => setShowFilters((current) => !current)}>
+                  {showFilters ? 'Hide' : 'Show'}
+                </Button>
               </div>
             </div>
+
+            {showFilters && (
+              <div className="grid gap-4 lg:grid-cols-4">
+                <div className="space-y-2">
+                  <Label htmlFor="ipc">IPC codes</Label>
+                  <Input
+                    id="ipc"
+                    value={ipc}
+                    onChange={(event) => setIpc(event.target.value)}
+                    placeholder="H04W, G06F..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cpc">CPC codes</Label>
+                  <Input
+                    id="cpc"
+                    value={cpc}
+                    onChange={(event) => setCpc(event.target.value)}
+                    placeholder="H04W72/00, H01Q1/28"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="assignee">Assignee</Label>
+                  <Input
+                    id="assignee"
+                    value={assignee}
+                    onChange={(event) => setAssignee(event.target.value)}
+                    placeholder="Apple, Siemens, ..."
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="from">From</Label>
+                    <Input id="from" type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="to">To</Label>
+                    <Input id="to" type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center justify-between gap-2">
               <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
@@ -218,10 +243,46 @@ export default function PatentSearchPage() {
         </CardContent>
       </Card>
 
+      {schema && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Info className="h-4 w-4" /> Index definition
+            </CardTitle>
+            <CardDescription>
+              {schema.engine} index <code>{schema.indexName}</code> with vector, searchable, and filterable fields.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline">Engine {schema.engine}</Badge>
+              <Badge variant="outline">Searchable: {schema.searchable.join(', ')}</Badge>
+              <Badge variant="outline">Filterable: {schema.filterable.join(', ')}</Badge>
+              <Badge variant="secondary">Vector dims {schema.vectorDimensions}</Badge>
+            </div>
+            <div className="grid md:grid-cols-2 gap-2">
+              {schema.fields.map((field) => (
+                <div key={field.name} className="rounded-md border p-3">
+                  <div className="font-medium">{field.name}</div>
+                  <div className="text-xs text-muted-foreground">{field.description}</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Results</CardTitle>
           <CardDescription>Semantic and lexical ranking blended for better recall.</CardDescription>
+          {meta && (
+            <div className="text-xs text-muted-foreground flex flex-wrap gap-2">
+              <Badge variant="outline">Provider: {meta.provider}</Badge>
+              <Badge variant="outline">Page size: {meta.pageSize}</Badge>
+              <Badge variant="outline">Total: {meta.total}</Badge>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           {!results.length && !loading && <p className="text-muted-foreground">No results yet. Try refining your query.</p>}
