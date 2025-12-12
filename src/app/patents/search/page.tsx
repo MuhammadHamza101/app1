@@ -64,6 +64,8 @@ export default function PatentSearchPage() {
   const [ipc, setIpc] = useState('')
   const [cpc, setCpc] = useState('')
   const [assignee, setAssignee] = useState('')
+  const [jurisdiction, setJurisdiction] = useState('')
+  const [tags, setTags] = useState('')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [results, setResults] = useState<PatentSearchResult[]>([])
@@ -78,9 +80,11 @@ export default function PatentSearchPage() {
     if (ipc) chips.push(`IPC: ${ipc}`)
     if (cpc) chips.push(`CPC: ${cpc}`)
     if (assignee) chips.push(`Assignee: ${assignee}`)
+    if (jurisdiction) chips.push(`Jurisdiction: ${jurisdiction}`)
+    if (tags) chips.push(`Tags: ${tags}`)
     if (fromDate || toDate) chips.push(`Dates: ${fromDate || 'start'} → ${toDate || 'now'}`)
     return chips
-  }, [ipc, cpc, assignee, fromDate, toDate])
+  }, [ipc, cpc, assignee, jurisdiction, tags, fromDate, toDate])
 
   const handleSearch = async (event?: React.FormEvent) => {
     event?.preventDefault()
@@ -96,6 +100,8 @@ export default function PatentSearchPage() {
           ipc: parseList(ipc),
           cpc: parseList(cpc),
           assignee,
+          jurisdictions: parseList(jurisdiction),
+          tags: parseList(tags),
           startDate: fromDate || undefined,
           endDate: toDate || undefined,
         }),
@@ -205,6 +211,24 @@ export default function PatentSearchPage() {
                     value={assignee}
                     onChange={(event) => setAssignee(event.target.value)}
                     placeholder="Apple, Siemens, ..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="jurisdiction">Jurisdictions</Label>
+                  <Input
+                    id="jurisdiction"
+                    value={jurisdiction}
+                    onChange={(event) => setJurisdiction(event.target.value)}
+                    placeholder="US, EP, WO"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tags">Upload tags</Label>
+                  <Input
+                    id="tags"
+                    value={tags}
+                    onChange={(event) => setTags(event.target.value)}
+                    placeholder="seed, pdf, offline"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">

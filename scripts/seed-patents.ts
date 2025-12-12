@@ -19,47 +19,71 @@ async function seedPatents() {
       {
         title: 'AI-Assisted Prior Art Navigator',
         number: 'US202400001',
+        applicationNumber: '17/123,456',
+        publicationNumber: 'US-2024-0001-A1',
         abstract:
           'System for retrieving and ranking prior-art based on semantic similarity and claim coverage.',
         claimsText:
           '1. A method comprising generating embeddings for claims and comparing against a vector index...\n2. The method of claim 1 wherein risk signals are weighted by jurisdictional precedence.',
+        content:
+          'A retrieval system that fuses embeddings with lexical scoring to improve prior art recall and ranking for patent claims.',
         jurisdiction: 'US',
         assignee: 'PatentFlow Labs',
         status: 'IN_REVIEW' as const,
+        language: 'en',
         filingDate: subYears(new Date(), 2),
         publicationDate: subYears(new Date(), 1),
         technology: 'Search & Retrieval',
         keywords: 'semantic search, vector index, prior art',
+        ipcClasses: 'G06F16/30',
+        cpcClasses: 'G06F16/29',
+        sourceFile: 'seed/prior-art.pdf',
       },
       {
         title: 'Collaborative Claim Annotation Workspace',
         number: 'US202400057',
+        applicationNumber: '18/987,654',
+        publicationNumber: 'US-2024-0057-A1',
         abstract:
           'Real-time annotation environment for patent claims with comment threading and role-aware controls.',
         claimsText:
           '1. A collaborative interface providing synchronized cursors and anchored comments...\n2. The workspace of claim 1 with permissions bound to attorney and reviewer roles.',
+        content:
+          'A workspace enabling collaborative review of patent claims with semantic anchors and inline comment threads.',
         jurisdiction: 'EP',
         assignee: 'PatentFlow Labs',
         status: 'READY' as const,
+        language: 'en',
         filingDate: subYears(new Date(), 3),
         publicationDate: subYears(new Date(), 2),
         technology: 'Collaboration',
         keywords: 'annotations, comments, real-time',
+        ipcClasses: 'G06F40/00',
+        cpcClasses: 'G06F40/20',
+        sourceFile: 'seed/annotation.docx',
       },
       {
         title: 'Automated Claim Risk Scoring Engine',
         number: 'WO202300099',
+        applicationNumber: 'PCT/US2023/00099',
+        publicationNumber: 'WO-2023-00099-A1',
         abstract:
           'Pipeline that scores claim novelty and clarity risk using LLM-assisted heuristics and legal rules.',
         claimsText:
           '1. A scoring pipeline that ingests parsed claims and outputs a normalized risk index...\n2. The pipeline of claim 1 wherein rule-based signals are blended with model explanations.',
+        content:
+          'Risk scoring pipeline that evaluates claim clarity, novelty, and coverage using embeddings plus heuristics.',
         jurisdiction: 'WO',
         assignee: 'PatentFlow Labs',
         status: 'DRAFT' as const,
+        language: 'en',
         filingDate: subYears(new Date(), 1),
         publicationDate: new Date(),
         technology: 'Risk Analysis',
         keywords: 'risk scoring, LLM, heuristics',
+        ipcClasses: 'G06N20/00',
+        cpcClasses: 'G06N20/10',
+        sourceFile: 'seed/risk-scoring.json',
       },
     ]
 
@@ -75,6 +99,13 @@ async function seedPatents() {
                 status: 'COMPLETED',
                 notes: 'Seeded example',
               },
+            ],
+          },
+          tags: {
+            create: [
+              { tag: 'seed' },
+              { tag: 'demo' },
+              { tag: patent.jurisdiction?.toLowerCase() || 'unknown' },
             ],
           },
           insights: {

@@ -4,16 +4,24 @@ import { z } from 'zod'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { enqueueIngestion } from '@/lib/ingestion-queue'
+import { indexPatentForSearch } from '@/services/search'
 
 const createSchema = z.object({
   title: z.string().min(3),
   number: z.string().optional(),
+  applicationNumber: z.string().optional(),
+  publicationNumber: z.string().optional(),
   abstract: z.string().optional(),
   claimsText: z.string().optional(),
+  content: z.string().optional(),
   jurisdiction: z.string().optional(),
   assignee: z.string().optional(),
+  language: z.string().optional(),
   technology: z.string().optional(),
   keywords: z.string().optional(),
+  ipcClasses: z.string().optional(),
+  cpcClasses: z.string().optional(),
+  sourceFile: z.string().optional(),
   sourceType: z
     .enum(['PDF', 'DOCX', 'JSON', 'USPTO', 'EPO', 'WIPO', 'MANUAL_ENTRY'])
     .default('MANUAL_ENTRY'),
@@ -54,10 +62,20 @@ export async function POST(request: NextRequest) {
             tags: 'workspace,intake,queued',
           },
         },
+        tags: payload.keywords
+          ? {
+              create: payload.keywords
+                .split(',')
+                .map((tag) => tag.trim())
+                .filter(Boolean)
+                .map((tag) => ({ tag, source: 'manual' })),
+            }
+          : undefined,
       },
       include: {
         ingestions: true,
         insights: true,
+        tags: true,
       },
     })
 
@@ -68,6 +86,8 @@ export async function POST(request: NextRequest) {
         content: `${payload.abstract || ''}\n${payload.claimsText || ''}`,
       })
     }
+
+    await indexPatentForSearch(patent.id)
 
     return NextResponse.json({ patent })
   } catch (error) {

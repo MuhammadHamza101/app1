@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { generateInsightsFromText } from '@/lib/offline-analytics'
+import { indexPatentForSearch } from '@/services/search'
 
 interface IngestionJob {
   patentId: string
@@ -46,6 +47,8 @@ async function processNext() {
         tags: 'auto,offline,analysis',
       },
     })
+
+    await indexPatentForSearch(patentId)
 
     await db.patentIngestion.update({
       where: { id: ingestionId },
