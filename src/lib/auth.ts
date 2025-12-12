@@ -5,7 +5,8 @@ import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { authenticator } from 'otplib'
-import { auditEvent } from './audit'
+import { auditEvent, extractClientIp } from './audit'
+import { verifyBackupCode } from './mfa'
 
 type ExtendedToken = {
   id?: string
@@ -17,7 +18,7 @@ type ExtendedToken = {
 const credentialsSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
-  otp: z.string().length(6).optional(),
+  otp: z.string().min(6).max(12).optional(),
 })
 
 async function getUserByEmail(email: string) {
@@ -25,6 +26,7 @@ async function getUserByEmail(email: string) {
     where: { email },
     include: {
       firm: true,
+      backupCodes: true,
     },
   })
 }
@@ -42,7 +44,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         try {
           const submittedEmail = (credentials as any)?.email
           const { email, password, otp } = await credentialsSchema.parseAsync(
@@ -73,18 +75,42 @@ export const authOptions: NextAuthOptions = {
               authenticator.verify({ token: otp, secret: user.twoFactorSecret })
 
             if (!otpValid) {
-              await auditEvent({
-                type: 'auth.mfa_failed',
-                userId: user.id,
-                metadata: { email: user.email },
+              const backupResult = await verifyBackupCode(
+                otp || '',
+                (user.backupCodes as any) || []
+              )
+
+              if (!backupResult.valid) {
+                await auditEvent({
+                  type: 'auth.mfa_failed',
+                  userId: user.id,
+                  outcome: 'failure',
+                  ip: req?.headers ? extractClientIp(req.headers as any) : undefined,
+                  metadata: { email: user.email },
+                })
+                throw new Error('Multi-factor verification failed')
+              }
+
+              await db.user.update({
+                where: { id: user.id },
+                data: { backupCodes: backupResult.remaining as any },
               })
-              throw new Error('Multi-factor verification failed')
+
+              await auditEvent({
+                type: 'auth.mfa_backup_code_used',
+                userId: user.id,
+                outcome: 'success',
+                ip: req?.headers ? extractClientIp(req.headers as any) : undefined,
+                metadata: { email: user.email, usedCodeIssuedAt: backupResult.used?.issuedAt },
+              })
             }
           }
 
           await auditEvent({
             type: 'auth.login.success',
             userId: user.id,
+            outcome: 'success',
+            ip: req?.headers ? extractClientIp(req.headers as any) : undefined,
             metadata: { email: user.email },
           })
 
@@ -98,10 +124,12 @@ export const authOptions: NextAuthOptions = {
         } catch (error) {
           await auditEvent({
             type: 'auth.login.failed',
+            outcome: 'failure',
             metadata: {
               email: (credentials as any)?.email || submittedEmail,
               reason: (error as Error).message,
             },
+            ip: req?.headers ? extractClientIp(req.headers as any) : undefined,
           })
           console.error('Authorization error:', error)
           return null

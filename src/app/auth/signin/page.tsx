@@ -135,9 +135,7 @@ export default function SignInPage() {
                     <Input
                       id="signin-otp"
                       type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]{6}"
-                      placeholder="Required if MFA is enabled"
+                      placeholder="6-digit TOTP or backup code"
                       value={otp}
                       onChange={(e) => setOtp(e.target.value)}
                     />

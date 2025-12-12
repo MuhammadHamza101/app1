@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { authenticator } from 'otplib'
-import crypto from 'crypto'
+import { generateBackupCodes } from '@/lib/mfa'
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -31,9 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     const twoFactorSecret = authenticator.generateSecret()
-    const backupCodes = Array.from({ length: 5 }, () =>
-      crypto.randomBytes(4).toString('hex')
-    )
+    const { codes: backupCodes, stored: storedCodes } = generateBackupCodes(8)
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
@@ -62,7 +60,7 @@ export async function POST(request: NextRequest) {
         isActive: true,
         twoFactorEnabled: true,
         twoFactorSecret,
-        backupCodes: backupCodes.map((code) => ({ code })),
+        backupCodes: storedCodes,
       },
       include: {
         firm: true,
