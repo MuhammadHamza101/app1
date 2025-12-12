@@ -7,6 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   FileText,
   Users,
@@ -17,6 +20,11 @@ import {
   CheckCircle,
   LogOut,
   Plus,
+  Mail,
+  KeyRound,
+  PlayCircle,
+  Database,
+  History,
 } from 'lucide-react'
 import PatentFlowDemo from '@/components/patentflow/PatentFlowDemo'
 
@@ -121,11 +129,14 @@ export default function DashboardPage() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
             <TabsTrigger value="analysis">Analysis</TabsTrigger>
             <TabsTrigger value="team">Team</TabsTrigger>
+            <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
+            <TabsTrigger value="audit">Audit</TabsTrigger>
+            <TabsTrigger value="admin">Admin</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -297,6 +308,242 @@ export default function DashboardPage() {
                 ))}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="onboarding">
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Guided Walkthroughs</CardTitle>
+                  <CardDescription>Coach first-time users through core workflows.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {[{ title: 'Upload & Classify', steps: ['Import a sample draft', 'Apply firm taxonomy', 'Assign responsible attorney'] }, { title: 'Run First Analysis', steps: ['Select claim set', 'Run AI review', 'Export remediation checklist'] }, { title: 'Share for Review', steps: ['Route to reviewer', 'Track comments', 'Lock version for filing'] }].map((flow) => (
+                    <div key={flow.title} className="p-3 rounded-lg border bg-muted/50">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <PlayCircle className="w-4 h-4 text-blue-600" />
+                          <p className="text-sm font-semibold">{flow.title}</p>
+                        </div>
+                        <Button size="sm" variant="outline">
+                          Start
+                        </Button>
+                      </div>
+                      <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                        {flow.steps.map((step) => (
+                          <li key={step}>{step}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Sample Datasets</CardTitle>
+                  <CardDescription>Provision curated patent sets to explore the platform.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {[{ name: 'Biomedical Devices Starter', size: '18 patents, 6 IDS files', focus: 'stents, implantables' }, { name: 'Cloud Computing Portfolio', size: '24 patents, 3 continuations', focus: 'distributed storage, security' }, { name: 'GreenTech Filings', size: '15 patents, 2 provisionals', focus: 'EV charging, recycling' }].map((dataset) => (
+                    <div key={dataset.name} className="p-3 rounded-lg border flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold">{dataset.name}</p>
+                        <p className="text-xs text-muted-foreground">{dataset.size}</p>
+                        <p className="text-xs text-muted-foreground">Focus: {dataset.focus}</p>
+                      </div>
+                      <Button size="sm" variant="secondary">
+                        Load
+                      </Button>
+                    </div>
+                  ))}
+                  <div className="p-3 rounded-lg bg-muted border border-dashed">
+                    <p className="text-sm font-medium">Need something specific?</p>
+                    <p className="text-xs text-muted-foreground">Request a custom onboarding dataset scoped to your practice area.</p>
+                    <Button className="mt-3" variant="outline" size="sm">
+                      Request dataset
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="audit">
+            <Card>
+              <CardHeader>
+                <CardTitle>Audit Trails</CardTitle>
+                <CardDescription>Track sensitive actions across all patents and roles.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-4 text-xs font-semibold text-muted-foreground">
+                  <span>User</span>
+                  <span>Action</span>
+                  <span>Patent</span>
+                  <span>Timestamp</span>
+                </div>
+                {[{ user: 'Alex Morgan (Admin)', action: 'Reset password for Taylor Brooks', patent: 'Portfolio-wide', time: 'Today, 09:20' }, { user: 'Jamie Lee (Reviewer)', action: 'Exported claim audit log', patent: 'Cloud Storage Redundancy', time: 'Today, 08:10' }, { user: 'Jordan Smith (Attorney)', action: 'Accepted AI remediation on claim 12', patent: 'Rotary Shaft Assembly', time: 'Yesterday, 17:45' }, { user: 'Taylor Brooks (Paralegal)', action: 'Uploaded IDS package', patent: 'GreenTech Filings', time: 'Yesterday, 11:05' }].map((entry) => (
+                  <div key={`${entry.user}-${entry.time}`} className="grid grid-cols-4 items-center p-3 rounded-lg border bg-muted/40 text-sm">
+                    <div className="flex items-center gap-2">
+                      <History className="w-4 h-4 text-blue-600" />
+                      <span>{entry.user}</span>
+                    </div>
+                    <span>{entry.action}</span>
+                    <span className="text-muted-foreground">{entry.patent}</span>
+                    <span className="text-xs text-muted-foreground">{entry.time}</span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between p-3 rounded-lg border bg-muted">
+                  <div>
+                    <p className="text-sm font-medium">Retention & export</p>
+                    <p className="text-xs text-muted-foreground">Audit trails are immutable and exportable as CSV for outside counsel.</p>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    Download log
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="admin">
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Invite User</CardTitle>
+                  <CardDescription>Send secure invitations with firm and role assignment.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="invite-email">User email</Label>
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-muted-foreground" />
+                      <Input id="invite-email" type="email" placeholder="paralegal@firm.com" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="invite-role">Role</Label>
+                      <Select defaultValue="PARALEGAL">
+                        <SelectTrigger id="invite-role">
+                          <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ADMIN">Admin</SelectItem>
+                          <SelectItem value="ATTORNEY">Attorney</SelectItem>
+                          <SelectItem value="PARALEGAL">Paralegal</SelectItem>
+                          <SelectItem value="REVIEWER">Reviewer</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="invite-firm">Firm</Label>
+                      <Select defaultValue="acme">
+                        <SelectTrigger id="invite-firm">
+                          <SelectValue placeholder="Select firm" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="acme">Acme IP Group</SelectItem>
+                          <SelectItem value="northern">Northern Patent LLP</SelectItem>
+                          <SelectItem value="sterling">Sterling & Co.</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Password policy</Label>
+                    <p className="text-xs text-muted-foreground">Invitations expire in 48 hours and require MFA on first login.</p>
+                  </div>
+                  <Button className="w-full">Send invitation</Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Role & Firm Assignment</CardTitle>
+                  <CardDescription>Adjust permissions and membership with audit-ready controls.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {[{ name: 'Taylor Brooks', email: 'tbrooks@acmeip.com', role: 'PARALEGAL', firm: 'Acme IP Group' }, { name: 'Jamie Lee', email: 'jlee@northernpatent.com', role: 'REVIEWER', firm: 'Northern Patent LLP' }].map((member) => (
+                    <div key={member.email} className="p-3 rounded-lg border space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold">{member.name}</p>
+                          <p className="text-xs text-muted-foreground">{member.email}</p>
+                        </div>
+                        <Badge variant="secondary">{member.firm}</Badge>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label>Role</Label>
+                          <Select defaultValue={member.role}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="ADMIN">Admin</SelectItem>
+                              <SelectItem value="ATTORNEY">Attorney</SelectItem>
+                              <SelectItem value="PARALEGAL">Paralegal</SelectItem>
+                              <SelectItem value="REVIEWER">Reviewer</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label>Firm</Label>
+                          <Select defaultValue={member.firm}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Acme IP Group">Acme IP Group</SelectItem>
+                              <SelectItem value="Northern Patent LLP">Northern Patent LLP</SelectItem>
+                              <SelectItem value="Sterling & Co.">Sterling & Co.</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Shield className="w-4 h-4" />
+                          <span>Granular permissions logged to audit trail</span>
+                        </div>
+                        <Button size="sm" variant="outline">
+                          Save changes
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle>Password Resets</CardTitle>
+                  <CardDescription>Force rotations or send secure reset links.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {[{ name: 'Alex Morgan', email: 'amorgan@sterlingco.com', status: 'MFA enforced' }, { name: 'Jordan Smith', email: 'jsmith@acmeip.com', status: 'Pending reset' }].map((user) => (
+                    <div key={user.email} className="flex items-center justify-between p-3 rounded-lg border">
+                      <div>
+                        <p className="text-sm font-semibold">{user.name}</p>
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline">{user.status}</Badge>
+                        <Button variant="secondary" size="sm">
+                          <KeyRound className="w-4 h-4 mr-2" />
+                          Reset password
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Database className="w-4 h-4" />
+                    <span>All reset actions are versioned and tied to patent access logs.</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="settings">
