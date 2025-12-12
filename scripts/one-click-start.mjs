@@ -141,6 +141,9 @@ async function main() {
   logStep('Pushing database schema (Prisma)');
   runSync('npm', ['run', 'db:push'], rootDir, 'Database push');
 
+  logStep('Seeding default admin user');
+  runSync('npm', ['run', 'seed:default'], rootDir, 'Default user seed');
+
   registerShutdown();
 
   startService('Collaboration service', 'npm', ['run', 'dev'], collaborationDir);
