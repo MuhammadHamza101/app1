@@ -11,18 +11,19 @@
 ### 1. 一键启动（推荐）
 
 ```bash
-# 在项目根目录
+# 在项目根目录 / From project root
 npm run one-click-start
 ```
 
-脚本会自动：
-- 检查 Node.js 和 npm 是否可用
-- 生成 `.env.local`（若不存在）
+脚本会自动 / The script will:
+- 检查 Node.js 和 npm 是否可用（`node -v`、`npm -v`）
+- 生成 `.env.local` 和 `.env`（若不存在）
 - 为 Web 应用和实时协作服务安装依赖
-- 推送 Prisma 数据库 schema
+- 推送 Prisma 数据库 schema 并生成客户端
+- 播种默认管理员与示例专利
 - 启动 Web 应用（http://localhost:3000）与协作服务（端口 3003）
 
-按 `Ctrl+C` 可同时停止所有服务。
+保持终端开启即可使用，按 `Ctrl+C` 可同时停止所有服务。
 
 ### 2. 手动启动（可选）
 
