@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
 import { z } from 'zod'
-import { authOptions } from '@/lib/auth'
 import { HybridSearchService } from '@/services/search'
+import { getDemoSession } from '@/lib/demo-session'
 
 const searchSchema = z.object({
   query: z.string().default(''),
@@ -20,10 +19,7 @@ const searchSchema = z.object({
 })
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const session = getDemoSession()
 
   try {
     const body = await request.json()
@@ -56,10 +52,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const session = getDemoSession()
 
   const { searchParams } = new URL(request.url)
   const q = searchParams.get('q') || ''
