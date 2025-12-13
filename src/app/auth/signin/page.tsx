@@ -29,6 +29,15 @@ export default function SignInPage() {
   const DEFAULT_EMAIL = 'admin@patentflow.com'
   const DEFAULT_PASSWORD = 'admin123'
 
+  const restoreDefaultAdmin = async () => {
+    const response = await fetch('/api/auth/restore-admin', { method: 'POST' })
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}))
+      throw new Error(body.error || 'Could not reset the default admin account')
+    }
+  }
+
   const doSignIn = async (
     emailValue: string,
     passwordValue: string,
@@ -40,15 +49,31 @@ export default function SignInPage() {
     const trimmedOtp = otpValue?.trim()
 
     try {
-      const result = await signIn('credentials', {
+      let result = await signIn('credentials', {
         email: emailValue,
         password: passwordValue,
         ...(trimmedOtp ? { otp: trimmedOtp } : {}),
         redirect: false,
       })
 
+      if (result?.error && emailValue === DEFAULT_EMAIL) {
+        try {
+          await restoreDefaultAdmin()
+          result = await signIn('credentials', {
+            email: emailValue,
+            password: passwordValue,
+            redirect: false,
+          })
+        } catch (resetError) {
+          setError(
+            (resetError as Error).message ||
+              'Login failed. Could not restore the default admin account.'
+          )
+        }
+      }
+
       if (result?.error) {
-        setError('Invalid email or password')
+        setError('Invalid email or password. If you are using the demo admin, try the quick login button below to auto-fix credentials.')
       } else if (result?.ok) {
         router.push('/dashboard')
       }
