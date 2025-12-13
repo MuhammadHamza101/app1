@@ -28,68 +28,65 @@ async function ensureSchema(db: Awaited<ReturnType<typeof getDb>>) {
   }
 }
 
-async function createDefaultUser() {
+async function resetAdmin() {
+  const email = 'admin@patentflow.com'
+  const defaultPassword = 'admin123'
+
   const db = await getDb()
+
   try {
     await ensureSchema(db)
-    // Check if admin user already exists
-    const existingUser = await db.user.findUnique({
-      where: { email: 'admin@patentflow.com' }
-    })
 
-    if (existingUser) {
-      console.log('✅ Admin user already exists')
-      return
-    }
-
-    // Get or create default firm
-    let firm = await db.firm.findUnique({
-      where: { domain: 'patentflow.com' }
-    })
-
+    
+    let firm = await db.firm.findUnique({ where: { domain: 'patentflow.com' } })
     if (!firm) {
       firm = await db.firm.create({
         data: {
           name: 'PatentFlow Enterprise',
           domain: 'patentflow.com',
-          settings: {
-            plan: 'enterprise',
-            maxUsers: 100,
-            features: ['all']
-          }
+          settings: { plan: 'enterprise', maxUsers: 100, features: ['all'] }
         }
       })
-      console.log('✅ Default firm created')
-    } else {
-      console.log('✅ Using existing firm')
+      console.log('✅ Created default firm')
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash('admin123', 12)
+    const hashedPassword = await bcrypt.hash(defaultPassword, 12)
 
-    // Create admin user
-    const user = await db.user.create({
-      data: {
-        email: 'admin@patentflow.com',
+    const user = await db.user.upsert({
+      where: { email },
+      create: {
+        email,
         name: 'System Administrator',
         password: hashedPassword,
         role: 'ADMIN',
         firmId: firm.id,
-        isActive: true
+        isActive: true,
+        twoFactorEnabled: false,
+        twoFactorSecret: null,
+        backupCodes: null
+      },
+      update: {
+        password: hashedPassword,
+        firmId: firm.id,
+        isActive: true,
+        role: 'ADMIN',
+        twoFactorEnabled: false,
+        twoFactorSecret: null,
+        backupCodes: null,
+        updatedAt: new Date()
       }
     })
 
-    console.log('✅ Default admin user created:')
-    console.log('   Email: admin@patentflow.com')
-    console.log('   Password: admin123')
-    console.log('   Role: ADMIN')
-    console.log('   Firm:', firm.name)
-
+    console.log('✅ Admin account ready:')
+    console.log(`   Email: ${user.email}`)
+    console.log(`   Password: ${defaultPassword}`)
+    console.log('   MFA: disabled (TOTP/backup codes cleared)')
   } catch (error) {
-    console.error('❌ Error creating default user:', error)
+    console.error('❌ Failed to reset admin:', error)
+    process.exitCode = 1
   } finally {
     await db.$disconnect()
   }
 }
 
-createDefaultUser()
+resetAdmin()

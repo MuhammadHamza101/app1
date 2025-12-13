@@ -3,8 +3,8 @@
 This document summarizes which premium patent review/analysis capabilities are already present in the current codebase and which are still outstanding.
 
 ## Implemented today
-- **Local-first runtime and installer**: One-click start installs dependencies, seeds the database, and boots the web and collaboration services without external APIs or CDNs.
-- **Authentication with admin seeding**: Credential-based login via NextAuth + Prisma with a default admin seeded automatically and bcrypt-hashed passwords.
+- **Local-first runtime and installer**: One-click start installs dependencies, resets/seeds the database (including the default admin), and boots the web and collaboration services without external APIs or CDNs.
+- **Authentication with admin seeding**: Credential-based login via NextAuth + Prisma with a default admin automatically reset (password restored, MFA cleared) and bcrypt-hashed passwords.
 - **Patent workspace foundation**: Prisma-backed models and APIs for creating and listing patents, along with upload flows that capture metadata and produce baseline insights.
 - **Collaboration service shell**: Socket.IO service for joining rooms, broadcasting edits/cursors/comments, and tracking presence.
 - **Developer ergonomics**: Scripts to generate env files, push Prisma schema, seed example data, and run the services together.
