@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useSession } from 'next-auth/react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import { useRealtimeRoom } from '@/hooks/use-realtime-room'
+import { demoSession } from '@/lib/demo-session'
 
 interface ReviewWorkspaceProps {
   patentId: string
@@ -73,7 +73,7 @@ interface AssistantState {
 }
 
 export function ReviewWorkspace({ patentId, defaultThread }: ReviewWorkspaceProps) {
-  const { data: session } = useSession()
+  const session = demoSession
   const [comments, setComments] = useState<Comment[]>([])
   const [message, setMessage] = useState('')
   const [threadKey, setThreadKey] = useState(defaultThread || '')
@@ -102,7 +102,7 @@ export function ReviewWorkspace({ patentId, defaultThread }: ReviewWorkspaceProp
   const [dueDate, setDueDate] = useState('')
   const [connected, setConnected] = useState(false)
 
-  const roleTag = session?.user?.role || 'REVIEWER'
+  const roleTag = session.user.role || 'REVIEWER'
   const room = `patent-${patentId}`
 
   const grouped = useMemo(() => {
@@ -263,7 +263,7 @@ export function ReviewWorkspace({ patentId, defaultThread }: ReviewWorkspaceProp
   }
 
   const createAssignment = async () => {
-    if (!session?.user?.id) return toast.error('User missing')
+    if (!session.user.id) return toast.error('User missing')
     try {
       const res = await fetch(`/api/patents/${patentId}/assignments`, {
         method: 'POST',
@@ -348,7 +348,7 @@ export function ReviewWorkspace({ patentId, defaultThread }: ReviewWorkspaceProp
             <div className="space-y-2">
               <Label>Due date</Label>
               <Input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
-              <Button className="w-full" onClick={createAssignment} disabled={!session?.user?.id}>
+              <Button className="w-full" onClick={createAssignment}>
                 Assign to me
               </Button>
             </div>
