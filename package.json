@@ -14,6 +14,7 @@
     "db:reset": "prisma migrate reset",
     "seed:default": "tsx scripts/seed-user.ts",
     "seed:patents": "tsx scripts/seed-patents.ts",
+    "reset:admin": "tsx scripts/reset-admin.ts",
     "one-click-start": "node scripts/one-click-start.mjs",
     "retention:purge": "tsx scripts/retention-purge.ts"
   },
