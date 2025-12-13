@@ -81,48 +81,111 @@ CLAIMS
     setDocuments([demoDocument])
   }, [])
 
-  const startAnalysis = async (documentId: string, type: AnalysisType) => {
+  const startAnalysis = (documentId: string, type: AnalysisType) => {
     setLoading(true)
-    
-    try {
-      const response = await fetch('/api/analyses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentId, type }),
-      })
-      
-      if (response.ok) {
-        const result = await response.json()
-        
-        // Add to local state
-        const newAnalysis: DemoAnalysis = {
-          id: result.analysisId,
-          documentId,
-          type,
-          status: AnalysisStatus.RUNNING,
-          startedAt: new Date(),
-        }
-        
-        setAnalyses(prev => [newAnalysis, ...prev])
-        
-        // Simulate completion after 2 seconds
-        setTimeout(async () => {
-          try {
-            const analysesResponse = await fetch('/api/analyses')
-            if (analysesResponse.ok) {
-              const data = await analysesResponse.json()
-              setAnalyses(data.analyses)
-            }
-          } catch (error) {
-            console.error('Failed to fetch updated analyses:', error)
-          }
-          setLoading(false)
-        }, 2000)
-      }
-    } catch (error) {
-      console.error('Failed to start analysis:', error)
-      setLoading(false)
+
+    const newAnalysis: DemoAnalysis = {
+      id: `analysis-${Date.now()}`,
+      documentId,
+      type,
+      status: AnalysisStatus.RUNNING,
+      startedAt: new Date(),
     }
+
+    setAnalyses(prev => [newAnalysis, ...prev])
+
+    const sampleResults = {
+      [AnalysisType.CLAIMS_ANALYSIS]: {
+        summary: {
+          score: 82,
+          criticalIssues: 1,
+          highIssues: 2,
+          mediumIssues: 3,
+          lowIssues: 2,
+          totalIssues: 8,
+          recommendations: [
+            'Tighten antecedent basis for Claim 5.',
+            'Clarify dependent claim references to avoid ambiguity.',
+            'Group related terms to simplify examiner review.',
+          ],
+        },
+        findings: [
+          {
+            title: 'Ambiguous dependency in Claim 7',
+            description: 'Claim 7 references an undefined element from Claim 6.',
+            severity: 'HIGH' as Severity,
+            suggestion: 'Update Claim 7 to reference the correct element from Claim 5.',
+            context: 'Claim 7: The assembly of claim 6 wherein the bearing assembly...',
+          },
+          {
+            title: 'Missing antecedent basis',
+            description: 'Claim 5 introduces "the gear portion" without prior definition.',
+            severity: 'CRITICAL' as Severity,
+            suggestion: 'Define "gear portion" when first mentioned or adjust dependencies.',
+            context: 'Claim 5: The system of claim 4 wherein the gear portion engages...',
+          },
+        ],
+        claimGraph: {
+          nodes: [
+            { claimNumber: 1, type: 'independent' },
+            { claimNumber: 2, type: 'dependent' },
+            { claimNumber: 3, type: 'dependent' },
+            { claimNumber: 4, type: 'dependent' },
+          ],
+          edges: [
+            { from: 2, to: 1 },
+            { from: 3, to: 1 },
+            { from: 4, to: 2 },
+          ],
+        },
+      },
+      [AnalysisType.TERMINOLOGY_ANALYSIS]: {
+        summary: {
+          score: 90,
+          criticalIssues: 0,
+          highIssues: 1,
+          mediumIssues: 2,
+          lowIssues: 1,
+          totalIssues: 4,
+          recommendations: [
+            'Normalize references to the bearing assembly.',
+            'Standardize capitalisation for defined terms.',
+          ],
+        },
+        findings: [
+          {
+            title: 'Inconsistent term: housing vs. casing',
+            description: 'Both "housing" and "casing" are used for the same structure.',
+            severity: 'MEDIUM' as Severity,
+            suggestion: 'Use "housing" consistently throughout the specification.',
+            context: 'Specification paragraph 12: The casing includes...',
+          },
+          {
+            title: 'Capitalisation mismatch',
+            description: '"Rotary shaft assembly" alternates between capitalised and lowercase.',
+            severity: 'LOW' as Severity,
+            suggestion: 'Capitalize defined terms in all occurrences.',
+            context: 'Abstract: A rotary shaft assembly system comprising...',
+          },
+        ],
+      },
+    }
+
+    setTimeout(() => {
+      setAnalyses(prev =>
+        prev.map(analysis =>
+          analysis.id === newAnalysis.id
+            ? {
+                ...analysis,
+                status: AnalysisStatus.COMPLETED,
+                completedAt: new Date(),
+                results: sampleResults[type as keyof typeof sampleResults],
+              }
+            : analysis
+        )
+      )
+      setLoading(false)
+    }, 1200)
   }
 
   const getSeverityColor = (severity: Severity) => {
