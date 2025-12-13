@@ -2,14 +2,14 @@
 
 ## What is working today
 - **Local-first runtime**: All services (web + collaboration + SQLite) run on the same machine with no external APIs or font/CDN downloads; env templates avoid third-party keys so data stays on-device.
-- **Authentication & admin seeding**: Credential-based login via NextAuth + Prisma with bcrypt hashing and a default admin seeded by `npm run seed:default` (or automatically via `npm run one-click-start`). Environment secrets are generated if missing.
+- **Authentication & admin seeding**: Credential-based login via NextAuth + Prisma with bcrypt hashing and a default admin automatically reset (password + MFA cleared) during `npm run one-click-start` or manually via `npm run reset:admin`. Environment secrets are generated if missing.
 - **Patent workspace foundation**: Prisma models for patents, ingestions, and insights; `/api/patents` supports intake + filtering; `/patents` lists seeded patents with latest insight + ingestion status; `/patents/upload` captures metadata and creates baseline insights.
 - **Collaboration service shell**: Socket.IO service supports joining document rooms, broadcasting edits/cursors/comments, and presence tracking.
 - **Developer ergonomics**: One-click starter installs dependencies, prepares env files, pushes Prisma schema, seeds admin and example patents, and boots both services.
 
 > Evidence references:
 > - Auth configuration and credential checks: `src/lib/auth.ts` lines 1-96.
-> - One-click start workflow and seeding: `scripts/one-click-start.mjs` lines 1-120.
+> - One-click start workflow and admin reset: `scripts/one-click-start.mjs` lines 1-120.
 > - Collaboration service features: `mini-services/collaboration-service/index.js` lines 1-104.
 
 ## Premium feature parity status
