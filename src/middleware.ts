@@ -52,7 +52,14 @@ export function middleware(request: NextRequest) {
     return rateLimitResponse
   }
 
-  if (process.env.ENFORCE_HTTPS === 'false') {
+  // By default, keep local development on HTTP to avoid SSL protocol errors on localhost.
+  // HTTPS can be re-enabled by setting ENFORCE_HTTPS=true (or in production unless explicitly disabled).
+  const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(request.nextUrl.hostname)
+  const enforceHttpsEnv = process.env.ENFORCE_HTTPS
+  const shouldEnforceHttps =
+    enforceHttpsEnv === 'true' || (process.env.NODE_ENV === 'production' && enforceHttpsEnv !== 'false')
+
+  if (!shouldEnforceHttps || isLocalhost) {
     const insecureResponse = NextResponse.next()
     addSecurityHeaders(insecureResponse)
     return insecureResponse

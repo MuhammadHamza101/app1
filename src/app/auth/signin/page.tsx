@@ -26,21 +26,54 @@ export default function SignInPage() {
   
   const router = useRouter()
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const DEFAULT_EMAIL = 'admin@patentflow.com'
+  const DEFAULT_PASSWORD = 'admin123'
+
+  const restoreDefaultAdmin = async () => {
+    const response = await fetch('/api/auth/restore-admin', { method: 'POST' })
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}))
+      throw new Error(body.error || 'Could not reset the default admin account')
+    }
+  }
+
+  const doSignIn = async (
+    emailValue: string,
+    passwordValue: string,
+    otpValue?: string
+  ) => {
     setIsLoading(true)
     setError('')
 
+    const trimmedOtp = otpValue?.trim()
+
     try {
-      const result = await signIn('credentials', {
-        email,
-        password,
-        otp,
+      let result = await signIn('credentials', {
+        email: emailValue,
+        password: passwordValue,
+        ...(trimmedOtp ? { otp: trimmedOtp } : {}),
         redirect: false,
       })
 
+      if (result?.error && emailValue === DEFAULT_EMAIL) {
+        try {
+          await restoreDefaultAdmin()
+          result = await signIn('credentials', {
+            email: emailValue,
+            password: passwordValue,
+            redirect: false,
+          })
+        } catch (resetError) {
+          setError(
+            (resetError as Error).message ||
+              'Login failed. Could not restore the default admin account.'
+          )
+        }
+      }
+
       if (result?.error) {
-        setError('Invalid email or password')
+        setError('Invalid email or password. If you are using the demo admin, try the quick login button below to auto-fix credentials.')
       } else if (result?.ok) {
         router.push('/dashboard')
       }
@@ -50,6 +83,20 @@ export default function SignInPage() {
       setIsLoading(false)
     }
   }
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault()
+    return doSignIn(email, password, otp)
+  }
+
+  const prefillDefault = () => {
+    setEmail(DEFAULT_EMAIL)
+    setPassword(DEFAULT_PASSWORD)
+    setOtp('')
+    setError('')
+  }
+
+  const handleQuickLogin = () => doSignIn(DEFAULT_EMAIL, DEFAULT_PASSWORD)
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -139,15 +186,18 @@ export default function SignInPage() {
                       value={otp}
                       onChange={(e) => setOtp(e.target.value)}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Leave blank unless multi-factor authentication is enabled on your account.
+                    </p>
                   </div>
                   {error && (
                     <Alert variant="destructive">
                       <AlertDescription>{error}</AlertDescription>
                     </Alert>
                   )}
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
+                  <Button
+                    type="submit"
+                    className="w-full"
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -158,6 +208,18 @@ export default function SignInPage() {
                     ) : (
                       'Sign In'
                     )}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    disabled={isLoading}
+                    onClick={() => {
+                      prefillDefault()
+                      handleQuickLogin()
+                    }}
+                  >
+                    Use default admin (local demo)
                   </Button>
                 </form>
               </TabsContent>
