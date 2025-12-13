@@ -182,6 +182,15 @@ sqlite3 data/dev.db ".schema"
    pip install -r requirements.txt
    ```
 
+5. **浏览器提示“连接不安全 / ERR_SSL_PROTOCOL_ERROR”**
+   ```bash
+   # 开发模式默认使用 HTTP；请确认浏览器地址为 http://localhost:3000
+   # 如被强制跳转到 HTTPS，可在根目录 .env.local 中设置：
+   echo "ENFORCE_HTTPS=false" >> .env.local
+   # 重新启动一键脚本
+   npm run one-click-start
+   ```
+
 ### 日志查看
 ```bash
 # 查看开发服务器日志
