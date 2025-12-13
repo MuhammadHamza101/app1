@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { z } from 'zod'
 import { enqueueAnalysisJob } from '@/lib/analysis/pipeline'
+import { getDemoSession } from '@/lib/demo-session'
 
 const analysisSchema = z.object({
   documentId: z.string(),
@@ -13,14 +12,7 @@ const analysisSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    const session = getDemoSession()
 
     const body = await request.json()
     const { documentId, type, config } = analysisSchema.parse(body)
@@ -96,14 +88,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    const session = getDemoSession()
 
     const { searchParams } = new URL(request.url)
     const documentId = searchParams.get('documentId')
