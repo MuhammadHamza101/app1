@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
 import { z } from 'zod'
 
-import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { broadcastToRoom } from '@/lib/realtime'
+import { getDemoSession } from '@/lib/demo-session'
 
 const createSchema = z.object({
   assigneeId: z.string(),
@@ -14,10 +13,7 @@ const createSchema = z.object({
 })
 
 export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions)
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const session = getDemoSession()
 
   const assignments = await db.patentAssignment.findMany({
     where: { patentId: params.id },
@@ -29,10 +25,7 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
 }
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions)
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const session = getDemoSession()
 
   if (!['ADMIN', 'ATTORNEY', 'REVIEWER'].includes(session.user.role)) {
     return NextResponse.json({ error: 'Insufficient role' }, { status: 403 })

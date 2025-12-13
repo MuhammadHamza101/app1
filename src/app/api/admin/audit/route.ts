@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { readAuditEvents, auditEvent, extractClientIp } from '@/lib/audit'
+import { getDemoSession } from '@/lib/demo-session'
 
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user || session.user.role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const session = getDemoSession()
 
   const { searchParams } = new URL(request.url)
   const userId = searchParams.get('userId') || undefined

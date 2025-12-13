@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-
-import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { createAlertRule } from '@/services/analytics/alerts'
 import { deliverScheduledReport } from '@/services/analytics/reporting'
 import { computeAnalyticsSnapshot, loadCachedAnalytics } from '@/services/analytics/warehouse'
+import { getDemoSession } from '@/lib/demo-session'
 
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const session = getDemoSession()
 
   const search = request.nextUrl.searchParams
   const filters = {
@@ -27,10 +22,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const session = getDemoSession()
 
   const body = await request.json()
 

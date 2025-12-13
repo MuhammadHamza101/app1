@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
 import { z } from 'zod'
-import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { enqueueIngestion } from '@/lib/ingestion-queue'
 import { indexPatentForSearch } from '@/services/search'
+import { getDemoSession } from '@/lib/demo-session'
 
 const createSchema = z.object({
   title: z.string().min(3),
@@ -29,11 +28,7 @@ const createSchema = z.object({
 })
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const session = getDemoSession()
 
   try {
     const body = await request.json()
@@ -97,11 +92,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const session = getDemoSession()
 
   try {
     const { searchParams } = new URL(request.url)
