@@ -79,6 +79,7 @@ python main.py
 - **密码**: admin123
 - **角色**: 管理员
 - **TOTP/备份码**: 首次登录无需填写（保持空白即可），只有在开启多因素验证后才需要输入 6 位验证码或备份码。
+- **一键填充**: 登录页提供 “Use default admin (local demo)” 按钮，点击即可自动填充默认管理员凭据后直接登录。
 
 > 如果在使用上述默认账号时仍提示 “Invalid email or password”，请确认已运行 `npm run one-click-start`（它会自动重置默认管理员、恢复密码并关闭 MFA），然后重新尝试保持 TOTP 输入框为空。如果依然失败，可运行 `npm run reset:admin` 手动重置默认管理员，再重启服务。
 
