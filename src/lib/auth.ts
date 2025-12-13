@@ -15,11 +15,22 @@ type ExtendedToken = {
   sub?: string
 }
 
-const credentialsSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-  otp: z.string().min(6).max(12).optional(),
-})
+const credentialsSchema = z
+  .object({
+    email: z.string().email(),
+    password: z.string().min(6),
+    otp: z
+      .string()
+      .trim()
+      .min(6)
+      .max(12)
+      .optional()
+      .or(z.literal('')),
+  })
+  .transform((data) => ({
+    ...data,
+    otp: data.otp ? data.otp.trim() || undefined : undefined,
+  }))
 
 async function getUserByEmail(email: string) {
   return await db.user.findUnique({

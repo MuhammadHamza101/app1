@@ -1,7 +1,36 @@
-import { db } from '../src/lib/db'
+import path from 'node:path'
+import { execSync } from 'node:child_process'
+import { config } from 'dotenv'
 import { subYears } from 'date-fns'
 
+config({ path: path.join(process.cwd(), '.env') })
+config({ path: path.join(process.cwd(), '.env.local'), override: true })
+
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = 'file:./dev.db'
+}
+
+async function getDb() {
+  const { db } = await import('../src/lib/db')
+  return db
+}
+
+async function ensureSchema(db: Awaited<ReturnType<typeof getDb>>) {
+  try {
+    await db.user.count()
+  } catch (error: any) {
+    if (error?.code === 'P2021') {
+      console.log('🛠️ Database not initialized; running prisma db push...')
+      execSync('npx prisma db push --skip-generate', { stdio: 'inherit' })
+      return
+    }
+    throw error
+  }
+}
+
 async function seedPatents() {
+  const db = await getDb()
+  await ensureSchema(db)
   try {
     const admin = await db.user.findFirst({ where: { email: 'admin@patentflow.com' } })
     if (!admin) {

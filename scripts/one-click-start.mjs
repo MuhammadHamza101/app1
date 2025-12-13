@@ -140,8 +140,8 @@ async function main() {
   logStep('Pushing database schema (Prisma)');
   runSync('npm', ['run', 'db:push'], rootDir, 'Database push');
 
-  logStep('Seeding default admin user');
-  runSync('npm', ['run', 'seed:default'], rootDir, 'Default user seed');
+  logStep('Resetting default admin user');
+  runSync('npm', ['run', 'reset:admin'], rootDir, 'Default admin reset');
 
   logStep('Seeding sample patents');
   runSync('npm', ['run', 'seed:patents'], rootDir, 'Patent seed');

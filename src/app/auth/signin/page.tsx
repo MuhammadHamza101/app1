@@ -26,16 +26,24 @@ export default function SignInPage() {
   
   const router = useRouter()
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const DEFAULT_EMAIL = 'admin@patentflow.com'
+  const DEFAULT_PASSWORD = 'admin123'
+
+  const doSignIn = async (
+    emailValue: string,
+    passwordValue: string,
+    otpValue?: string
+  ) => {
     setIsLoading(true)
     setError('')
 
+    const trimmedOtp = otpValue?.trim()
+
     try {
       const result = await signIn('credentials', {
-        email,
-        password,
-        otp,
+        email: emailValue,
+        password: passwordValue,
+        ...(trimmedOtp ? { otp: trimmedOtp } : {}),
         redirect: false,
       })
 
@@ -50,6 +58,20 @@ export default function SignInPage() {
       setIsLoading(false)
     }
   }
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault()
+    return doSignIn(email, password, otp)
+  }
+
+  const prefillDefault = () => {
+    setEmail(DEFAULT_EMAIL)
+    setPassword(DEFAULT_PASSWORD)
+    setOtp('')
+    setError('')
+  }
+
+  const handleQuickLogin = () => doSignIn(DEFAULT_EMAIL, DEFAULT_PASSWORD)
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -139,15 +161,18 @@ export default function SignInPage() {
                       value={otp}
                       onChange={(e) => setOtp(e.target.value)}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Leave blank unless multi-factor authentication is enabled on your account.
+                    </p>
                   </div>
                   {error && (
                     <Alert variant="destructive">
                       <AlertDescription>{error}</AlertDescription>
                     </Alert>
                   )}
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
+                  <Button
+                    type="submit"
+                    className="w-full"
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -158,6 +183,18 @@ export default function SignInPage() {
                     ) : (
                       'Sign In'
                     )}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    disabled={isLoading}
+                    onClick={() => {
+                      prefillDefault()
+                      handleQuickLogin()
+                    }}
+                  >
+                    Use default admin (local demo)
                   </Button>
                 </form>
               </TabsContent>
