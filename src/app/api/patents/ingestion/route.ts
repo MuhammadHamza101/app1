@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
 import {
   cancelIngestionJob,
   enqueueIngestionJob,
@@ -10,13 +8,11 @@ import {
 } from '@/services/ingestion'
 import { persistRawFile } from '@/services/ingestion/storage'
 import { db } from '@/lib/db'
+import { getDemoSession } from '@/lib/demo-session'
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = getDemoSession()
 
     const formData = await request.formData()
     const files = formData.getAll('files')
@@ -89,10 +85,7 @@ export async function GET(request: NextRequest) {
     const list = searchParams.get('list') === 'true'
     const jobId = searchParams.get('jobId')
 
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = getDemoSession()
 
     if (list) {
       const jobs = await listIngestionJobs(session.user.id)
@@ -149,10 +142,7 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = getDemoSession()
 
     const body = await request.json()
     const { jobId, action } = body || {}

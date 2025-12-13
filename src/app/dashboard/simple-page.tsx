@@ -1,20 +1,11 @@
 'use client'
 
-import { signOut, useSession } from 'next-auth/react'
-
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { demoSession } from '@/lib/demo-session'
 
 export default function SimpleDashboard() {
-  const { data: session, status } = useSession()
-
-  if (status === 'loading') {
-    return <div className="p-8">Loading...</div>
-  }
-
-  if (!session) {
-    return <div className="p-8">You need to sign in to view the dashboard.</div>
-  }
+  const session = demoSession
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -32,7 +23,9 @@ export default function SimpleDashboard() {
               Your account is active and the dashboard is ready for use.
             </div>
             <div className="mt-6">
-              <Button onClick={() => signOut({ callbackUrl: '/auth/signin' })}>Sign Out</Button>
+              <Button asChild>
+                <a href="/dashboard">Return to main dashboard</a>
+              </Button>
             </div>
           </div>
         </CardContent>

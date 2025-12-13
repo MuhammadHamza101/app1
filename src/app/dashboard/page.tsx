@@ -1,8 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useSession, signOut } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -18,7 +16,6 @@ import {
   Shield,
   Clock,
   CheckCircle,
-  LogOut,
   Plus,
   Mail,
   KeyRound,
@@ -27,44 +24,18 @@ import {
   History,
 } from 'lucide-react'
 import PatentFlowDemo from '@/components/patentflow/PatentFlowDemo'
+import { demoSession } from '@/lib/demo-session'
 
 export default function DashboardPage() {
-  const { data: session, status } = useSession()
-  const router = useRouter()
+  const session = demoSession
   const [reviewQueue, setReviewQueue] = useState<any[]>([])
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.replace('/auth/signin')
-    }
-  }, [status, router])
-
-  useEffect(() => {
-    if (!session?.user) return
     fetch('/api/reviews')
       .then((res) => res.json())
       .then((payload) => setReviewQueue(payload.assignments || []))
       .catch(() => setReviewQueue([]))
-  }, [session?.user])
-
-  const handleSignOut = async () => {
-    await signOut({ callbackUrl: '/auth/signin' })
-  }
-
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-        <div className="text-center space-y-2">
-          <div className="h-10 w-10 mx-auto rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading your workspace...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!session) {
-    return null
-  }
+  }, [])
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -125,10 +96,7 @@ export default function DashboardPage() {
                   <Settings className="w-4 h-4 mr-2" />
                   Settings
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleSignOut}>
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Sign Out
-                </Button>
+                <Badge variant="outline" className="text-xs">No login needed</Badge>
               </div>
             </div>
           </div>
